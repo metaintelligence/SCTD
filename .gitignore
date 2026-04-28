@@ -1,0 +1,53 @@
+# Unreal Engine generated files
+Binaries/
+Content/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Build artifacts
+Build/
+*.target
+*.modules
+*.version
+
+# Visual Studio / VS Code / Rider local files
+.vs/
+.vscode/
+.idea/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+*.user
+*.userosscache
+*.sln.docstates
+
+# Unreal local workspace files
+*.code-workspace
+*.uprojectdirs
+
+# Logs and crash dumps
+*.log
+*.dmp
+*.tmp
+
+# OS metadata
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Python/cache artifacts from helper tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Package and archive outputs
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
