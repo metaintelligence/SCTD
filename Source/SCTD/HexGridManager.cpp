@@ -45,6 +45,17 @@ void AHexGridManager::GenerateGrid()
 		return;
 	}
 
+	if (TileMesh)
+	{
+		TileInstances->SetStaticMesh(TileMesh);
+	}
+
+	if (!TileInstances->GetStaticMesh())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("HexGridManager '%s' has no TileMesh assigned."), *GetName());
+		return;
+	}
+
 	const FVector CenterOffset = bCenterGridOnActor ? GetTileLocation(0, 0) : FVector::ZeroVector;
 
 	for (int32 Q = -GridRadius; Q <= GridRadius; ++Q)

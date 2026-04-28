@@ -1,6 +1,8 @@
 # Unreal Engine generated files
 Binaries/
-Content/
+Content/*
+!Content/Blueprints/
+!Content/Blueprints/**
 DerivedDataCache/
 Intermediate/
 Saved/

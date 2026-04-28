@@ -5,6 +5,7 @@
 #include "HexGridManager.generated.h"
 
 class UInstancedStaticMeshComponent;
+class UStaticMesh;
 
 UENUM(BlueprintType)
 enum class EHexGridOrientation : uint8
@@ -45,6 +46,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hex Grid", meta = (ClampMin = "1.0"))
 	float TileSize = 100.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hex Grid")
+	TObjectPtr<UStaticMesh> TileMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Hex Grid")
 	EHexGridOrientation Orientation = EHexGridOrientation::FlatTop;
