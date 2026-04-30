@@ -2,7 +2,6 @@
 
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "Engine/CollisionProfile.h"
 #include "Engine/StaticMesh.h"
 
 AHexGridManager::AHexGridManager()
@@ -40,7 +39,7 @@ void AHexGridManager::GenerateGrid()
 
 	for (const FHexTileSlot& Slot : TileSlots)
 	{
-		if (!Slot.Tile || !Slot.Tile->Mesh)
+		if (!Slot.Mesh)
 		{
 			continue;
 		}
@@ -54,8 +53,8 @@ void AHexGridManager::GenerateGrid()
 
 		TileComponent->CreationMethod = EComponentCreationMethod::UserConstructionScript;
 		TileComponent->SetupAttachment(SceneRoot);
-		TileComponent->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
-		TileComponent->SetStaticMesh(Slot.Tile->Mesh);
+		TileComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		TileComponent->SetStaticMesh(Slot.Mesh);
 		TileComponent->SetRelativeLocation(Slot.LocalLocation);
 		TileComponent->SetRelativeRotation(TileRotation);
 		TileComponent->SetRelativeScale3D(TileScale);
@@ -96,7 +95,7 @@ void AHexGridManager::RebuildTileSlots()
 	const FVector CenterOffset = bCenterGridOnActor ? GetTileLocation(0, 0) : FVector::ZeroVector;
 	for (int32 Index = 0; Index < AxialCoordinates.Num(); ++Index)
 	{
-		const int32 SlotIndex = Index + 1;
+		const int32 SlotIndex = Index;
 		FHexTileSlot NewSlot;
 		NewSlot.SlotIndex = SlotIndex;
 		NewSlot.Q = AxialCoordinates[Index].X;
@@ -105,23 +104,32 @@ void AHexGridManager::RebuildTileSlots()
 		NewSlot.RingIndex = NewSlot.Ring == 0 ? 0 : Index - (1 + 3 * (NewSlot.Ring - 1) * NewSlot.Ring) + 1;
 		NewSlot.LocalLocation = GetTileLocation(NewSlot.Q, NewSlot.R) - CenterOffset;
 
-		const FHexTileSlot* ExistingSlot = ExistingSlots.FindByPredicate([SlotIndex](const FHexTileSlot& Candidate)
+		const FHexTileSlot* ExistingSlot = ExistingSlots.FindByPredicate([&NewSlot](const FHexTileSlot& Candidate)
 		{
-			return Candidate.SlotIndex == SlotIndex;
+			return Candidate.Q == NewSlot.Q && Candidate.R == NewSlot.R;
 		});
 
-		if (ExistingSlot && ExistingSlot->Tile)
+		if (!ExistingSlot)
 		{
-			NewSlot.Tile = ExistingSlot->Tile;
+			ExistingSlot = ExistingSlots.FindByPredicate([SlotIndex](const FHexTileSlot& Candidate)
+			{
+				return Candidate.SlotIndex == SlotIndex;
+			});
+		}
+
+		if (ExistingSlot)
+		{
+			NewSlot.TileType = ExistingSlot->TileType;
+			NewSlot.bEnemySpawn = ExistingSlot->TileType == EHexTileType::Road && ExistingSlot->bEnemySpawn;
+			NewSlot.NextMovementTargetTileIndex = ExistingSlot->TileType == EHexTileType::Road ? ExistingSlot->NextMovementTargetTileIndex : INDEX_NONE;
+			NewSlot.Mesh = ExistingSlot->Mesh;
 		}
 		else
 		{
-			NewSlot.Tile = NewObject<UHexTile>(this, UHexTile::StaticClass(), NAME_None, RF_Transactional);
-			if (NewSlot.Tile)
-			{
-				NewSlot.Tile->TileType = EHexTileType::Road;
-				NewSlot.Tile->Mesh = TileMesh ? TileMesh : (AvailableTileMeshes.Num() > 0 ? AvailableTileMeshes[0] : nullptr);
-			}
+			NewSlot.TileType = EHexTileType::Road;
+			NewSlot.bEnemySpawn = false;
+			NewSlot.NextMovementTargetTileIndex = INDEX_NONE;
+			NewSlot.Mesh = TileMesh ? TileMesh : (AvailableTileMeshes.Num() > 0 ? AvailableTileMeshes[0] : nullptr);
 		}
 
 		TileSlots.Add(NewSlot);
@@ -134,10 +142,129 @@ int32 AHexGridManager::GetExpectedTileSlotCount() const
 	return 1 + 3 * AxialRadius * (AxialRadius + 1);
 }
 
+bool AHexGridManager::FindTileSlotAtWorldLocation(const FVector& WorldLocation, FHexTileSlot& OutSlot) const
+{
+	const FVector LocalLocation = GetActorTransform().InverseTransformPosition(WorldLocation);
+	const FVector2D LocalPoint(LocalLocation.X, LocalLocation.Y);
+
+	const FHexTileSlot* BestSlot = nullptr;
+	float BestDistanceSquared = TNumericLimits<float>::Max();
+
+	for (const FHexTileSlot& Slot : TileSlots)
+	{
+		if (!IsLocalPointInsideTileFootprint(LocalPoint, Slot.LocalLocation))
+		{
+			continue;
+		}
+
+		const FVector2D SlotCenter(Slot.LocalLocation.X, Slot.LocalLocation.Y);
+		const float DistanceSquared = FVector2D::DistSquared(LocalPoint, SlotCenter);
+		if (DistanceSquared < BestDistanceSquared)
+		{
+			BestDistanceSquared = DistanceSquared;
+			BestSlot = &Slot;
+		}
+	}
+
+	if (!BestSlot)
+	{
+		return false;
+	}
+
+	OutSlot = *BestSlot;
+	return true;
+}
+
+bool AHexGridManager::FindTileSlotByIndex(int32 SlotIndex, FHexTileSlot& OutSlot) const
+{
+	const FHexTileSlot* Slot = TileSlots.FindByPredicate([SlotIndex](const FHexTileSlot& Candidate)
+	{
+		return Candidate.SlotIndex == SlotIndex;
+	});
+
+	if (!Slot)
+	{
+		return false;
+	}
+
+	OutSlot = *Slot;
+	return true;
+}
+
+bool AHexGridManager::GetTileWorldLocationBySlotIndex(int32 SlotIndex, FVector& OutWorldLocation) const
+{
+	FHexTileSlot Slot;
+	if (!FindTileSlotByIndex(SlotIndex, Slot))
+	{
+		return false;
+	}
+
+	OutWorldLocation = GetActorTransform().TransformPosition(Slot.LocalLocation);
+	return true;
+}
+
+void AHexGridManager::GetEnemySpawnTileWorldLocations(TArray<FVector>& OutWorldLocations) const
+{
+	OutWorldLocations.Reset();
+
+	for (const FHexTileSlot& Slot : TileSlots)
+	{
+		if (!Slot.bEnemySpawn || Slot.TileType != EHexTileType::Road)
+		{
+			continue;
+		}
+
+		OutWorldLocations.Add(GetActorTransform().TransformPosition(Slot.LocalLocation));
+	}
+}
+
+bool AHexGridManager::IsWorldLocationAllyTraversable(const FVector& WorldLocation) const
+{
+	FHexTileSlot Slot;
+	if (!FindTileSlotAtWorldLocation(WorldLocation, Slot))
+	{
+		return false;
+	}
+
+	return Slot.TileType != EHexTileType::Block;
+}
+
+bool AHexGridManager::IsLocalPointInsideTileFootprint(const FVector2D& LocalPoint, const FVector& TileCenter) const
+{
+	const FVector2D Footprint = GetTileFootprint();
+	const float HalfWidth = Footprint.X * 0.5f;
+	const float HalfHeight = Footprint.Y * 0.5f;
+	if (HalfWidth <= KINDA_SMALL_NUMBER || HalfHeight <= KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	const float DeltaX = FMath::Abs(LocalPoint.X - TileCenter.X);
+	const float DeltaY = FMath::Abs(LocalPoint.Y - TileCenter.Y);
+
+	if (DeltaX > HalfWidth || DeltaY > HalfHeight)
+	{
+		return false;
+	}
+
+	if (Orientation == EHexGridOrientation::PointyTop)
+	{
+		return DeltaY / HalfHeight + DeltaX / Footprint.X <= 1.0f;
+	}
+
+	return DeltaX / HalfWidth + DeltaY / Footprint.Y <= 1.0f;
+}
+
 void AHexGridManager::UpdateSlotMetadata()
 {
 	for (FHexTileSlot& Slot : TileSlots)
 	{
+		if (Slot.TileType != EHexTileType::Road)
+		{
+			Slot.bEnemySpawn = false;
+			Slot.NextMovementTargetTileIndex = INDEX_NONE;
+		}
+
 		Slot.LocalLocation = GetTileLocation(Slot.Q, Slot.R) - (bCenterGridOnActor ? GetTileLocation(0, 0) : FVector::ZeroVector);
 	}
 }
@@ -165,24 +292,19 @@ void AHexGridManager::AddRingSlots(TArray<FIntPoint>& OutAxialCoordinates, int32
 	}
 }
 
+UStaticMesh* AHexGridManager::GetBoardSizeReferenceMesh() const
+{
+	if (AvailableTileMeshes.Num() > 0 && AvailableTileMeshes[0])
+	{
+		return AvailableTileMeshes[0];
+	}
+
+	return TileMesh;
+}
+
 FVector2D AHexGridManager::GetTileFootprint() const
 {
-	const UStaticMesh* StaticMesh = TileMesh;
-	if (!StaticMesh)
-	{
-		for (const FHexTileSlot& Slot : TileSlots)
-		{
-			if (Slot.Tile && Slot.Tile->Mesh)
-			{
-				StaticMesh = Slot.Tile->Mesh;
-				break;
-			}
-		}
-	}
-	if (!StaticMesh && AvailableTileMeshes.Num() > 0)
-	{
-		StaticMesh = AvailableTileMeshes[0];
-	}
+	const UStaticMesh* StaticMesh = GetBoardSizeReferenceMesh();
 
 	if (!bUseMeshBoundsForTileSpacing || !StaticMesh)
 	{

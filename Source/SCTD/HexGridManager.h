@@ -38,8 +38,17 @@ struct FHexTileSlot
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Hex Tile Slot")
 	FVector LocalLocation = FVector::ZeroVector;
 
-	UPROPERTY(EditAnywhere, Instanced, BlueprintReadWrite, Category = "Hex Tile Slot")
-	TObjectPtr<UHexTile> Tile;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hex Tile Slot")
+	EHexTileType TileType = EHexTileType::Road;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hex Tile Slot", meta = (EditCondition = "TileType == EHexTileType::Road", EditConditionHides))
+	bool bEnemySpawn = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hex Tile Slot", meta = (EditCondition = "TileType == EHexTileType::Road", EditConditionHides))
+	int32 NextMovementTargetTileIndex = INDEX_NONE;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hex Tile Slot")
+	TObjectPtr<UStaticMesh> Mesh;
 };
 
 UCLASS(Blueprintable)
@@ -53,13 +62,13 @@ public:
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void BeginPlay() override;
 
-	UFUNCTION(BlueprintCallable, Category = "Hex Grid")
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Hex Grid")
 	void GenerateGrid();
 
-	UFUNCTION(BlueprintCallable, Category = "Hex Grid")
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Hex Grid")
 	void ClearGrid();
 
-	UFUNCTION(BlueprintCallable, Category = "Hex Grid")
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Hex Grid")
 	void RebuildTileSlots();
 
 	UFUNCTION(BlueprintPure, Category = "Hex Grid")
@@ -68,8 +77,25 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Hex Grid")
 	int32 GetExpectedTileSlotCount() const;
 
+	UFUNCTION(BlueprintPure, Category = "Hex Grid")
+	bool FindTileSlotAtWorldLocation(const FVector& WorldLocation, FHexTileSlot& OutSlot) const;
+
+	UFUNCTION(BlueprintPure, Category = "Hex Grid")
+	bool FindTileSlotByIndex(int32 SlotIndex, FHexTileSlot& OutSlot) const;
+
+	UFUNCTION(BlueprintPure, Category = "Hex Grid")
+	bool GetTileWorldLocationBySlotIndex(int32 SlotIndex, FVector& OutWorldLocation) const;
+
+	UFUNCTION(BlueprintPure, Category = "Hex Grid")
+	void GetEnemySpawnTileWorldLocations(TArray<FVector>& OutWorldLocations) const;
+
+	UFUNCTION(BlueprintPure, Category = "Hex Grid")
+	bool IsWorldLocationAllyTraversable(const FVector& WorldLocation) const;
+
 protected:
+	UStaticMesh* GetBoardSizeReferenceMesh() const;
 	FVector2D GetTileFootprint() const;
+	bool IsLocalPointInsideTileFootprint(const FVector2D& LocalPoint, const FVector& TileCenter) const;
 	void UpdateSlotMetadata();
 	void AddRingSlots(TArray<FIntPoint>& OutAxialCoordinates, int32 Ring) const;
 

@@ -46,7 +46,6 @@ actor_cdo = unreal.get_default_object(generated_class)
 
 tile_slots = []
 for slot in actor_cdo.get_editor_property("TileSlots"):
-    tile = slot.get_editor_property("Tile")
     tile_slots.append(
         {
             "slot_index": slot.get_editor_property("SlotIndex"),
@@ -55,11 +54,10 @@ for slot in actor_cdo.get_editor_property("TileSlots"):
             "q": slot.get_editor_property("Q"),
             "r": slot.get_editor_property("R"),
             "local_location": vector_to_dict(slot.get_editor_property("LocalLocation")),
-            "tile": None
-            if not tile
-            else {
-                "type": enum_name(tile.get_editor_property("TileType")),
-                "mesh": object_path(tile.get_editor_property("Mesh")),
+            "tile": {
+                "type": enum_name(slot.get_editor_property("TileType")),
+                "enemy_spawn": slot.get_editor_property("bEnemySpawn"),
+                "mesh": object_path(slot.get_editor_property("Mesh")),
             },
         }
     )
