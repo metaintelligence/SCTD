@@ -3,14 +3,18 @@ import unreal
 
 BLUEPRINT_PATH = "/Game/Blueprints"
 BLUEPRINT_NAME = "BP_HexGridManager"
-TILE_MESH_PATH = "/Game/hex_tile_coal/StaticMeshes/hex_tile_coal.hex_tile_coal"
+HEX_TILES_PATH = "/Game/Hextiles"
 
 
-def find_component_by_name(actor_cdo, component_name):
-    for component in actor_cdo.get_components_by_class(unreal.ActorComponent):
-        if component.get_name() == component_name:
-            return component
-    return None
+def load_static_meshes_under_folder(folder_path):
+    meshes = []
+    for asset_path in editor_asset_library.list_assets(folder_path, recursive=True, include_folder=False):
+        asset = editor_asset_library.load_asset(asset_path)
+        if isinstance(asset, unreal.StaticMesh):
+            meshes.append(asset)
+
+    meshes.sort(key=lambda mesh: mesh.get_path_name())
+    return meshes
 
 
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -33,9 +37,11 @@ else:
         factory=factory,
     )
 
-tile_mesh = editor_asset_library.load_asset(TILE_MESH_PATH)
-if not tile_mesh:
-    raise RuntimeError(f"Tile mesh not found: {TILE_MESH_PATH}")
+tile_meshes = load_static_meshes_under_folder(HEX_TILES_PATH)
+if not tile_meshes:
+    raise RuntimeError(f"No StaticMesh assets found under: {HEX_TILES_PATH}")
+
+default_tile_mesh = tile_meshes[0]
 
 unreal.BlueprintEditorLibrary.compile_blueprint(blueprint)
 
@@ -46,15 +52,14 @@ if not generated_class:
 actor_cdo = unreal.get_default_object(generated_class)
 
 try:
-    actor_cdo.set_editor_property("TileMesh", tile_mesh)
+    actor_cdo.set_editor_property("AvailableTileMeshes", tile_meshes)
+except Exception:
+    unreal.log_warning("AvailableTileMeshes property is not available yet. Compile the updated C++ code, then rerun this script.")
+
+try:
+    actor_cdo.set_editor_property("TileMesh", default_tile_mesh)
 except Exception:
     unreal.log_warning("TileMesh property is not available yet. Compile the updated C++ code, then rerun this script.")
-
-tile_instances = find_component_by_name(actor_cdo, "TileInstances")
-if tile_instances:
-    tile_instances.set_editor_property("StaticMesh", tile_mesh)
-else:
-    unreal.log_warning("TileInstances component was not found on BP_HexGridManager.")
 
 try:
     actor_cdo.set_editor_property("GridRadius", 5)
@@ -66,5 +71,15 @@ try:
 except Exception:
     unreal.log_warning("TileSize property was not available.")
 
+try:
+    actor_cdo.set_editor_property("bUseMeshBoundsForTileSpacing", True)
+except Exception:
+    unreal.log_warning("bUseMeshBoundsForTileSpacing property was not available.")
+
+try:
+    actor_cdo.rebuild_tile_slots()
+except Exception:
+    unreal.log_warning("RebuildTileSlots function was not available.")
+
 unreal.EditorAssetLibrary.save_loaded_asset(blueprint)
-unreal.log(f"Created or updated {blueprint_asset_path} with tile mesh {TILE_MESH_PATH}")
+unreal.log(f"Created or updated {blueprint_asset_path} with {len(tile_meshes)} hex tile mesh(es) from {HEX_TILES_PATH}")
