@@ -6,8 +6,8 @@
 
 class AHexGridManager;
 class UMonsterAIBehavior;
+class UMonsterAnimInstance;
 class UAnimSequence;
-class UAnimationAsset;
 class UPhysicalMaterial;
 class USkeletalMeshComponent;
 class USphereComponent;
@@ -19,6 +19,14 @@ enum class EMonsterActionState : uint8
 	Moving UMETA(DisplayName = "Moving"),
 	AttackPreMotion UMETA(DisplayName = "Attack Pre Motion"),
 	AttackPostMotion UMETA(DisplayName = "Attack Post Motion")
+};
+
+UENUM(BlueprintType)
+enum class EMonsterVisualState : uint8
+{
+	Idle UMETA(DisplayName = "Idle"),
+	Moving UMETA(DisplayName = "Moving"),
+	Attacking UMETA(DisplayName = "Attacking")
 };
 
 UCLASS(Abstract, Blueprintable)
@@ -126,6 +134,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Visual")
 	float VisualForwardYawOffsetDegrees = -90.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float AnimationTransitionBlendSeconds = 0.15f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
 	TObjectPtr<UAnimSequence> IdleAnimation;
 
@@ -135,11 +146,17 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
 	TArray<TObjectPtr<UAnimSequence>> AttackAnimations;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
+	TSubclassOf<UMonsterAnimInstance> MonsterAnimInstanceClass;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Debug")
 	bool bLogMonsterDebug = true;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Monster|Combat")
 	EMonsterActionState ActionState = EMonsterActionState::Idle;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Monster|Visual")
+	EMonsterVisualState VisualState = EMonsterVisualState::Idle;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UPhysicalMaterial> RuntimePhysicsMaterial;
@@ -155,7 +172,7 @@ private:
 	float AttackCooldownRemaining = 0.0f;
 	float AttackMotionRemaining = 0.0f;
 	TWeakObjectPtr<AActor> PendingAttackTarget;
-	TWeakObjectPtr<UAnimationAsset> CurrentAnimation;
+	TWeakObjectPtr<UAnimSequence> CurrentAnimation;
 	FVector LastTraversableLocation = FVector::ZeroVector;
 	FVector MeshRelativeLocation = FVector::ZeroVector;
 	FVector MeshRelativeScale = FVector::OneVector;
@@ -171,6 +188,7 @@ private:
 	FVector CachedSideForceDirection = FVector::ZeroVector;
 	float LastSideForceDecisionTimeSeconds = -FLT_MAX;
 	float LastVisualMovementDecisionTimeSeconds = -FLT_MAX;
+	float LastVisualStateTransitionTimeSeconds = -FLT_MAX;
 	bool bHasLastTraversableLocation = false;
 	bool bLoggedMissingMoveTarget = false;
 	bool bHasCachedMeshRelativeTransform = false;
@@ -209,10 +227,12 @@ private:
 	void FaceRotationImmediately(const FRotator& TargetRotation);
 	void ApplyVisualYaw(float TargetYaw);
 	bool IsAttackMotionState() const;
+	void RequestVisualState(EMonsterVisualState NewVisualState, UAnimSequence* OverrideAnimation = nullptr, float PlayRate = 1.0f);
+	UAnimSequence* GetAnimationForVisualState(EMonsterVisualState InVisualState) const;
 	void PlayIdleAnimation();
 	void PlayMovementAnimation();
 	void PlayAttackAnimation();
-	void PlayAnimation(UAnimationAsset* Animation, bool bLooping, float PlayRate);
+	void PushVisualStateToAnimInstance(UAnimSequence* Animation, bool bLooping, float PlayRate);
 	void SetActionState(EMonsterActionState NewActionState);
 	void LogMonsterDebug(const TCHAR* Format, ...) const;
 };

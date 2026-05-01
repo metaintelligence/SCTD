@@ -9,5 +9,6 @@ public class SCTDEditorTarget : TargetRules
 		DefaultBuildSettings = BuildSettingsVersion.V6;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
 		ExtraModuleNames.Add("SCTD");
+		ExtraModuleNames.Add("SCTDEditor");
 	}
 }

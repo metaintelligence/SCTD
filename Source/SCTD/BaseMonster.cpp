@@ -2,13 +2,13 @@
 
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimSequence.h"
-#include "Animation/AnimSingleNodeInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Engine/DamageEvents.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "HexGridManager.h"
+#include "MonsterAnimInstance.h"
 #include "MonsterAIBehavior.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 
@@ -31,6 +31,21 @@ const TCHAR* GetMonsterActionStateName(EMonsterActionState ActionState)
 		return TEXT("AttackPreMotion");
 	case EMonsterActionState::AttackPostMotion:
 		return TEXT("AttackPostMotion");
+	default:
+		return TEXT("Unknown");
+	}
+}
+
+const TCHAR* GetMonsterVisualStateName(EMonsterVisualState VisualState)
+{
+	switch (VisualState)
+	{
+	case EMonsterVisualState::Idle:
+		return TEXT("Idle");
+	case EMonsterVisualState::Moving:
+		return TEXT("Moving");
+	case EMonsterVisualState::Attacking:
+		return TEXT("Attacking");
 	default:
 		return TEXT("Unknown");
 	}
@@ -62,7 +77,6 @@ ABaseMonster::ABaseMonster()
 	MonsterMesh->SetMobility(EComponentMobility::Movable);
 	MonsterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	MonsterMesh->SetSimulatePhysics(false);
-	MonsterMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 }
 
 void ABaseMonster::BeginPlay()
@@ -73,6 +87,10 @@ void ABaseMonster::BeginPlay()
 	if (!AIBehavior && AIBehaviorClass)
 	{
 		AIBehavior = NewObject<UMonsterAIBehavior>(this, AIBehaviorClass);
+	}
+	if (!MonsterAnimInstanceClass)
+	{
+		MonsterAnimInstanceClass = UMonsterAnimInstance::StaticClass();
 	}
 
 	CacheHexGridManager();
@@ -141,6 +159,7 @@ void ABaseMonster::Tick(float DeltaSeconds)
 		{
 			SetActionState(EMonsterActionState::Idle);
 		}
+		RequestVisualState(EMonsterVisualState::Idle);
 		ResolveTraversabilityBoundary(DeltaSeconds, MaxSpeed);
 		return;
 	}
@@ -162,11 +181,11 @@ void ABaseMonster::Tick(float DeltaSeconds)
 	UpdateVisualMovementDecision(MaxSpeed);
 	if (bVisualMovementBlocked)
 	{
-		PlayIdleAnimation();
+		RequestVisualState(EMonsterVisualState::Idle);
 	}
 	else
 	{
-		PlayMovementAnimation();
+		RequestVisualState(EMonsterVisualState::Moving);
 		AlignVisualToDirection(MoveDirection, DeltaSeconds);
 	}
 	ResolveTraversabilityBoundary(DeltaSeconds, MaxSpeed);
@@ -259,7 +278,19 @@ void ABaseMonster::ConfigureVisualMeshAttachment()
 	MonsterMesh->SetMobility(EComponentMobility::Movable);
 	MonsterMesh->SetSimulatePhysics(false);
 	MonsterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	MonsterMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	MonsterMesh->bPauseAnims = false;
+	MonsterMesh->bNoSkeletonUpdate = false;
+	MonsterMesh->bEnableUpdateRateOptimizations = false;
+	MonsterMesh->GlobalAnimRateScale = 1.0f;
+	MonsterMesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+	if (MonsterMesh->GetAnimationMode() != EAnimationMode::AnimationBlueprint)
+	{
+		MonsterMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+	}
+	if (MonsterAnimInstanceClass && MonsterMesh->GetAnimClass() != MonsterAnimInstanceClass)
+	{
+		MonsterMesh->SetAnimInstanceClass(MonsterAnimInstanceClass);
+	}
 	MonsterMesh->SetUsingAbsoluteLocation(false);
 	MonsterMesh->SetUsingAbsoluteRotation(false);
 	MonsterMesh->SetUsingAbsoluteScale(false);
@@ -329,15 +360,8 @@ void ABaseMonster::TickAttackState(float DeltaSeconds)
 {
 	AttackCooldownRemaining = FMath::Max(0.0f, AttackCooldownRemaining - DeltaSeconds);
 
-	if (ActionState == EMonsterActionState::Idle)
+	if (!IsAttackMotionState())
 	{
-		PlayIdleAnimation();
-		return;
-	}
-
-	if (ActionState == EMonsterActionState::Moving)
-	{
-		PlayMovementAnimation();
 		return;
 	}
 
@@ -360,7 +384,6 @@ void ABaseMonster::TickAttackState(float DeltaSeconds)
 
 	SetActionState(EMonsterActionState::Moving);
 	PendingAttackTarget.Reset();
-	PlayMovementAnimation();
 }
 
 void ABaseMonster::TryStartAttack(AActor* Target)
@@ -918,13 +941,12 @@ bool ABaseMonster::IsAttackMotionState() const
 
 void ABaseMonster::PlayIdleAnimation()
 {
-	PlayAnimation(IdleAnimation, true, 1.0f);
+	RequestVisualState(EMonsterVisualState::Idle);
 }
 
 void ABaseMonster::PlayMovementAnimation()
 {
-	ConfigureWalkingAnimationRootMotion();
-	PlayAnimation(WalkingAnimation, true, 1.0f);
+	RequestVisualState(EMonsterVisualState::Moving);
 }
 
 void ABaseMonster::PlayAttackAnimation()
@@ -952,10 +974,47 @@ void ABaseMonster::PlayAttackAnimation()
 	const float DesiredDuration = FMath::Max(0.01f, (AttackPreMotionMilliseconds + AttackPostMotionMilliseconds) * 0.001f);
 	const float AnimationDuration = FMath::Max(0.01f, SelectedAnimation->GetPlayLength());
 	const float PlayRate = AnimationDuration / DesiredDuration;
-	PlayAnimation(SelectedAnimation, false, PlayRate);
+	RequestVisualState(EMonsterVisualState::Attacking, SelectedAnimation, PlayRate);
 }
 
-void ABaseMonster::PlayAnimation(UAnimationAsset* Animation, bool bLooping, float PlayRate)
+void ABaseMonster::RequestVisualState(EMonsterVisualState NewVisualState, UAnimSequence* OverrideAnimation, float PlayRate)
+{
+	UAnimSequence* Animation = OverrideAnimation ? OverrideAnimation : GetAnimationForVisualState(NewVisualState);
+	if (!Animation)
+	{
+		return;
+	}
+
+	const EMonsterVisualState PreviousVisualState = VisualState;
+	VisualState = NewVisualState;
+	if (PreviousVisualState != NewVisualState)
+	{
+		LastVisualStateTransitionTimeSeconds = GetWorld() ? GetWorld()->GetTimeSeconds() : LastVisualStateTransitionTimeSeconds;
+		LogMonsterDebug(TEXT("Visual state changed: %s -> %s blend=%.2fs"),
+			GetMonsterVisualStateName(PreviousVisualState),
+			GetMonsterVisualStateName(NewVisualState),
+			AnimationTransitionBlendSeconds);
+	}
+
+	const bool bLooping = NewVisualState != EMonsterVisualState::Attacking;
+	PushVisualStateToAnimInstance(Animation, bLooping, PlayRate);
+}
+
+UAnimSequence* ABaseMonster::GetAnimationForVisualState(EMonsterVisualState InVisualState) const
+{
+	switch (InVisualState)
+	{
+	case EMonsterVisualState::Idle:
+		return IdleAnimation;
+	case EMonsterVisualState::Moving:
+		return WalkingAnimation;
+	case EMonsterVisualState::Attacking:
+	default:
+		return nullptr;
+	}
+}
+
+void ABaseMonster::PushVisualStateToAnimInstance(UAnimSequence* Animation, bool bLooping, float PlayRate)
 {
 	if (!MonsterMesh || !Animation)
 	{
@@ -964,20 +1023,28 @@ void ABaseMonster::PlayAnimation(UAnimationAsset* Animation, bool bLooping, floa
 
 	if (CurrentAnimation.Get() != Animation)
 	{
-		MonsterMesh->PlayAnimation(Animation, bLooping);
-		CurrentAnimation = Animation;
-		ConfigureAnimationRootMotion();
-	}
-	else
-	{
-		if (UAnimSingleNodeInstance* SingleNodeInstance = MonsterMesh->GetSingleNodeInstance())
+		if (Animation == WalkingAnimation)
 		{
-			SingleNodeInstance->SetLooping(bLooping);
-			SingleNodeInstance->SetPlaying(true);
+			ConfigureWalkingAnimationRootMotion();
 		}
+		CurrentAnimation = Animation;
 	}
 
-	MonsterMesh->SetPlayRate(FMath::Max(0.01f, PlayRate));
+	UAnimInstance* AnimInstance = MonsterMesh->GetAnimInstance();
+	UMonsterAnimInstance* MonsterAnimInstance = Cast<UMonsterAnimInstance>(AnimInstance);
+	if (!MonsterAnimInstance && MonsterAnimInstanceClass && MonsterMesh->GetAnimationMode() != EAnimationMode::AnimationBlueprint)
+	{
+		MonsterMesh->SetAnimationMode(EAnimationMode::AnimationBlueprint);
+		MonsterMesh->SetAnimInstanceClass(MonsterAnimInstanceClass);
+		AnimInstance = MonsterMesh->GetAnimInstance();
+		MonsterAnimInstance = Cast<UMonsterAnimInstance>(AnimInstance);
+	}
+
+	if (MonsterAnimInstance)
+	{
+		MonsterAnimInstance->SetMonsterVisualState(VisualState, Animation, bLooping, PlayRate, AnimationTransitionBlendSeconds);
+	}
+
 	RestoreMeshRelativePositionAndScale();
 }
 
