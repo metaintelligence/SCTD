@@ -2,6 +2,7 @@
 
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimSequence.h"
+#include "Animation/AnimSingleNodeInstance.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Engine/DamageEvents.h"
@@ -15,6 +16,9 @@ DEFINE_LOG_CATEGORY_STATIC(LogSCTDMonster, Log, All);
 
 namespace
 {
+constexpr float SideForceHeadOnAngleDegrees = 5.0f;
+constexpr float VisualMovementSpeedThresholdRatio = 0.2f;
+
 const TCHAR* GetMonsterActionStateName(EMonsterActionState ActionState)
 {
 	switch (ActionState)
@@ -137,19 +141,34 @@ void ABaseMonster::Tick(float DeltaSeconds)
 		{
 			SetActionState(EMonsterActionState::Idle);
 		}
-		ClampHorizontalSpeed(0.0f);
 		ResolveTraversabilityBoundary(DeltaSeconds, MaxSpeed);
 		return;
 	}
 
 	SetActionState(EMonsterActionState::Moving);
-	if (!MoveDirection.IsNearlyZero())
+	UpdateSideForceContacts(MoveDirection);
+	FVector AccelerationDirection = MoveDirection;
+	if (!CachedSideForceDirection.IsNearlyZero() && SideForceAmount > 0.0f)
 	{
-		ApplyMovementForce(MoveDirection);
+		AccelerationDirection += CachedSideForceDirection * SideForceAmount;
+	}
+
+	if (!AccelerationDirection.IsNearlyZero())
+	{
+		ApplyMovementForce(AccelerationDirection);
 	}
 
 	ClampHorizontalSpeed(MaxSpeed);
-	AlignVisualToDirection(MoveDirection, DeltaSeconds);
+	UpdateVisualMovementDecision(MaxSpeed);
+	if (bVisualMovementBlocked)
+	{
+		PlayIdleAnimation();
+	}
+	else
+	{
+		PlayMovementAnimation();
+		AlignVisualToDirection(MoveDirection, DeltaSeconds);
+	}
 	ResolveTraversabilityBoundary(DeltaSeconds, MaxSpeed);
 }
 
@@ -470,6 +489,185 @@ void ABaseMonster::UpdateMovementTargetFromCurrentTile()
 	}
 }
 
+void ABaseMonster::UpdateSideForceContacts(const FVector& MoveDirection)
+{
+	TArray<TWeakObjectPtr<ABaseMonster>> CurrentContacts;
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		SideForceContacts.Reset();
+		CachedSideForceDirection = FVector::ZeroVector;
+		bSideForceDecisionPending = false;
+		return;
+	}
+
+	const FVector CurrentLocation = GetActorLocation();
+	const float OwnRadius = FMath::Max(0.0f, CollisionRadius);
+
+	for (TActorIterator<ABaseMonster> It(World); It; ++It)
+	{
+		ABaseMonster* OtherMonster = *It;
+		if (!OtherMonster || OtherMonster == this || OtherMonster->IsActorBeingDestroyed())
+		{
+			continue;
+		}
+
+		const float CombinedRadius = OwnRadius + FMath::Max(0.0f, OtherMonster->CollisionRadius);
+		if (CombinedRadius <= 0.0f)
+		{
+			continue;
+		}
+
+		const float DistanceSquared = FVector::DistSquared2D(CurrentLocation, OtherMonster->GetActorLocation());
+		if (DistanceSquared > FMath::Square(CombinedRadius))
+		{
+			continue;
+		}
+
+		CurrentContacts.Add(OtherMonster);
+	}
+
+	const bool bContactsChanged = !AreSideForceContactsSame(CurrentContacts);
+	if (CurrentContacts.IsEmpty())
+	{
+		SideForceContacts.Reset();
+		CachedSideForceDirection = FVector::ZeroVector;
+		bSideForceDecisionPending = false;
+		return;
+	}
+
+	if (bContactsChanged)
+	{
+		SideForceContacts = MoveTemp(CurrentContacts);
+		bSideForceDecisionPending = true;
+	}
+
+	if (!bSideForceDecisionPending)
+	{
+		return;
+	}
+
+	const float CurrentTimeSeconds = World->GetTimeSeconds();
+	const float DecisionInterval = FMath::Max(0.0f, SideForceDecisionIntervalSeconds);
+	if (CurrentTimeSeconds - LastSideForceDecisionTimeSeconds < DecisionInterval)
+	{
+		return;
+	}
+
+	CachedSideForceDirection = CalculateSideForceDirection(MoveDirection);
+	LastSideForceDecisionTimeSeconds = CurrentTimeSeconds;
+	bSideForceDecisionPending = false;
+}
+
+bool ABaseMonster::AreSideForceContactsSame(const TArray<TWeakObjectPtr<ABaseMonster>>& CurrentContacts) const
+{
+	if (SideForceContacts.Num() != CurrentContacts.Num())
+	{
+		return false;
+	}
+
+	for (const TWeakObjectPtr<ABaseMonster>& CurrentContact : CurrentContacts)
+	{
+		const ABaseMonster* CurrentMonster = CurrentContact.Get();
+		bool bFoundContact = false;
+		for (const TWeakObjectPtr<ABaseMonster>& ExistingContact : SideForceContacts)
+		{
+			if (ExistingContact.Get() == CurrentMonster)
+			{
+				bFoundContact = true;
+				break;
+			}
+		}
+
+		if (!bFoundContact)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+FVector ABaseMonster::CalculateSideForceDirection(const FVector& MoveDirection) const
+{
+	FVector LocalForwardDirection = FVector::ZeroVector;
+	if (bHasVisualFacingYaw)
+	{
+		LocalForwardDirection = FRotator(0.0f, VisualFacingYaw, 0.0f).Vector();
+	}
+
+	if (LocalForwardDirection.IsNearlyZero() && PhysicsBody)
+	{
+		LocalForwardDirection = PhysicsBody->GetPhysicsLinearVelocity();
+		LocalForwardDirection.Z = 0.0f;
+	}
+
+	if (LocalForwardDirection.IsNearlyZero())
+	{
+		LocalForwardDirection = MoveDirection;
+		LocalForwardDirection.Z = 0.0f;
+	}
+
+	LocalForwardDirection = LocalForwardDirection.GetSafeNormal();
+	if (LocalForwardDirection.IsNearlyZero())
+	{
+		return FVector::ZeroVector;
+	}
+
+	const FVector CurrentLocation = GetActorLocation();
+	const FVector LocalRightDirection = FRotationMatrix(FRotator(0.0f, LocalForwardDirection.Rotation().Yaw, 0.0f)).GetUnitAxis(EAxis::Y);
+	FVector SelectedObstacleDirection = FVector::ZeroVector;
+	float BestForwardAlignment = -1.0f;
+
+	for (const TWeakObjectPtr<ABaseMonster>& Contact : SideForceContacts)
+	{
+		const ABaseMonster* OtherMonster = Contact.Get();
+		if (!OtherMonster)
+		{
+			continue;
+		}
+
+		FVector ToOther = OtherMonster->GetActorLocation() - CurrentLocation;
+		ToOther.Z = 0.0f;
+		const float Distance = ToOther.Size();
+		if (Distance <= KINDA_SMALL_NUMBER)
+		{
+			continue;
+		}
+
+		const FVector ObstacleDirection = ToOther / Distance;
+		const float ForwardAlignment = FVector::DotProduct(LocalForwardDirection, ObstacleDirection);
+		if (ForwardAlignment <= 0.0f)
+		{
+			continue;
+		}
+
+		if (ForwardAlignment > BestForwardAlignment)
+		{
+			BestForwardAlignment = ForwardAlignment;
+			SelectedObstacleDirection = ObstacleDirection;
+		}
+	}
+
+	if (SelectedObstacleDirection.IsNearlyZero())
+	{
+		return FVector::ZeroVector;
+	}
+
+	const float ObstacleRightAmount = FVector::DotProduct(SelectedObstacleDirection, LocalRightDirection);
+	if (BestForwardAlignment >= FMath::Cos(FMath::DegreesToRadians(SideForceHeadOnAngleDegrees)))
+	{
+		return LocalRightDirection * (FMath::RandBool() ? 1.0f : -1.0f);
+	}
+
+	if (FMath::IsNearlyZero(ObstacleRightAmount))
+	{
+		return FVector::ZeroVector;
+	}
+
+	return LocalRightDirection * -FMath::Sign(ObstacleRightAmount);
+}
+
 bool ABaseMonster::IsTargetInAttackRange(const AActor* Target) const
 {
 	if (!Target)
@@ -509,11 +707,12 @@ void ABaseMonster::ApplyMovementForce(const FVector& MoveDirection)
 		return;
 	}
 
+	const FVector AccelerationDirection = MoveDirection.GetSafeNormal();
 	FVector CurrentVelocity = PhysicsBody->GetPhysicsLinearVelocity();
 	CurrentVelocity.Z = 0.0f;
 
 	const float MaxSpeed = GetMaxMoveSpeed();
-	const float SpeedAlongInput = FVector::DotProduct(CurrentVelocity, MoveDirection);
+	const float SpeedAlongInput = FVector::DotProduct(CurrentVelocity, AccelerationDirection);
 	if (SpeedAlongInput >= MaxSpeed)
 	{
 		return;
@@ -521,6 +720,28 @@ void ABaseMonster::ApplyMovementForce(const FVector& MoveDirection)
 
 	const float ForceMagnitude = FMath::Max(0.1f, MovementMass) * GetAccelerationToReachMaxSpeed();
 	PhysicsBody->AddForce(MoveDirection * ForceMagnitude);
+}
+
+void ABaseMonster::UpdateVisualMovementDecision(float MaxSpeed)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	const float CurrentTimeSeconds = World->GetTimeSeconds();
+	const float DecisionInterval = FMath::Max(0.0f, SideForceDecisionIntervalSeconds);
+	if (CurrentTimeSeconds - LastVisualMovementDecisionTimeSeconds < DecisionInterval)
+	{
+		return;
+	}
+
+	FVector HorizontalVelocity = PhysicsBody ? PhysicsBody->GetPhysicsLinearVelocity() : FVector::ZeroVector;
+	HorizontalVelocity.Z = 0.0f;
+	const float VisualMovementSpeedThreshold = MaxSpeed * VisualMovementSpeedThresholdRatio;
+	bVisualMovementBlocked = MaxSpeed <= 0.0f || HorizontalVelocity.Size() <= VisualMovementSpeedThreshold;
+	LastVisualMovementDecisionTimeSeconds = CurrentTimeSeconds;
 }
 
 float ABaseMonster::GetMaxMoveSpeed() const
@@ -746,6 +967,14 @@ void ABaseMonster::PlayAnimation(UAnimationAsset* Animation, bool bLooping, floa
 		MonsterMesh->PlayAnimation(Animation, bLooping);
 		CurrentAnimation = Animation;
 		ConfigureAnimationRootMotion();
+	}
+	else
+	{
+		if (UAnimSingleNodeInstance* SingleNodeInstance = MonsterMesh->GetSingleNodeInstance())
+		{
+			SingleNodeInstance->SetLooping(bLooping);
+			SingleNodeInstance->SetPlaying(true);
+		}
 	}
 
 	MonsterMesh->SetPlayRate(FMath::Max(0.01f, PlayRate));

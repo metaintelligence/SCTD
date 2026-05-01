@@ -97,6 +97,12 @@ protected:
 	float SecondsToReachMaxSpeed = 0.25f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Physics", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float SideForceAmount = 0.4f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Physics", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float SideForceDecisionIntervalSeconds = 0.5f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Physics", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float CollisionRadius = 50.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Physics", meta = (ClampMin = "0.0", UIMin = "0.0"))
@@ -161,10 +167,16 @@ private:
 	int32 CurrentMovementTargetTileIndex = INDEX_NONE;
 	float AttackPreMotionDuration = 0.0f;
 	float AttackPreMotionElapsed = 0.0f;
+	TArray<TWeakObjectPtr<ABaseMonster>> SideForceContacts;
+	FVector CachedSideForceDirection = FVector::ZeroVector;
+	float LastSideForceDecisionTimeSeconds = -FLT_MAX;
+	float LastVisualMovementDecisionTimeSeconds = -FLT_MAX;
 	bool bHasLastTraversableLocation = false;
 	bool bLoggedMissingMoveTarget = false;
 	bool bHasCachedMeshRelativeTransform = false;
 	bool bHasVisualFacingYaw = false;
+	bool bSideForceDecisionPending = false;
+	bool bVisualMovementBlocked = false;
 
 	void CacheHexGridManager();
 	void ConfigurePhysicsBody();
@@ -180,8 +192,12 @@ private:
 	void UpdateAttackFacing(float DeltaSeconds);
 	FRotator GetFacingRotationToward(const FVector& TargetLocation) const;
 	void UpdateMovementTargetFromCurrentTile();
+	void UpdateSideForceContacts(const FVector& MoveDirection);
+	bool AreSideForceContactsSame(const TArray<TWeakObjectPtr<ABaseMonster>>& CurrentContacts) const;
+	FVector CalculateSideForceDirection(const FVector& MoveDirection) const;
 	int32 GetTileDistanceToTarget(const AActor* Target) const;
 	void ApplyMovementForce(const FVector& MoveDirection);
+	void UpdateVisualMovementDecision(float MaxSpeed);
 	float GetMaxMoveSpeed() const;
 	float GetAccelerationToReachMaxSpeed() const;
 	void ClampHorizontalSpeed(float MaxSpeed);
