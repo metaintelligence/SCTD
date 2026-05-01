@@ -117,6 +117,26 @@ UEdGraphPin* FindFirstOutputPin(UEdGraphNode* Node)
 	return nullptr;
 }
 
+bool ExposeOptionalInputPin(UAnimGraphNode_Base* Node, FName PropertyName)
+{
+	if (!Node)
+	{
+		return false;
+	}
+
+	for (int32 PinIndex = 0; PinIndex < Node->ShowPinForProperties.Num(); ++PinIndex)
+	{
+		FOptionalPinFromProperty& OptionalPin = Node->ShowPinForProperties[PinIndex];
+		if (OptionalPin.PropertyName == PropertyName)
+		{
+			Node->SetPinVisibility(true, PinIndex);
+			return true;
+		}
+	}
+
+	return Node->FindPin(PropertyName) != nullptr;
+}
+
 UAnimGraphNode_SequencePlayer* CreateSequenceNode(UEdGraph* Graph, UAnimationAsset* AnimationAsset, int32 NodePosX, int32 NodePosY, FString& OutMessage)
 {
 	UAnimSequenceBase* Sequence = Cast<UAnimSequenceBase>(AnimationAsset);
@@ -133,6 +153,9 @@ UAnimGraphNode_SequencePlayer* CreateSequenceNode(UEdGraph* Graph, UAnimationAss
 	SequenceNode->NodePosX = NodePosX;
 	SequenceNode->NodePosY = NodePosY;
 	SequenceNodeCreator.Finalize();
+	ExposeOptionalInputPin(SequenceNode, TEXT("PlayRate"));
+	ExposeOptionalInputPin(SequenceNode, TEXT("bLoopAnimation"));
+	SequenceNode->ReconstructNode();
 	return SequenceNode;
 }
 }
@@ -246,7 +269,7 @@ bool USCTDAnimBlueprintTools::BuildSingleSequenceAnimGraph(UAnimBlueprint* AnimB
 	return true;
 }
 
-bool USCTDAnimBlueprintTools::BuildMonsterStateBlendAnimGraph(UAnimBlueprint* AnimBlueprint, UAnimationAsset* IdleAnimation, UAnimationAsset* WalkingAnimation, UAnimationAsset* AttackAnimation, FString& OutMessage)
+bool USCTDAnimBlueprintTools::BuildMonsterStateBlendAnimGraph(UAnimBlueprint* AnimBlueprint, UAnimationAsset* IdleAnimation, UAnimationAsset* WalkingAnimation, UAnimationAsset* AttackAnimation, UAnimationAsset* DeathAnimation, FString& OutMessage)
 {
 	if (!AnimBlueprint)
 	{
@@ -254,7 +277,7 @@ bool USCTDAnimBlueprintTools::BuildMonsterStateBlendAnimGraph(UAnimBlueprint* An
 		return false;
 	}
 
-	if (!IdleAnimation || !WalkingAnimation || !AttackAnimation)
+	if (!IdleAnimation || !WalkingAnimation || !AttackAnimation || !DeathAnimation)
 	{
 		return FailWithMessage(TEXT("One or more animation assets are null."), OutMessage);
 	}
@@ -311,6 +334,8 @@ bool USCTDAnimBlueprintTools::BuildMonsterStateBlendAnimGraph(UAnimBlueprint* An
 			VisibleEntries->Reset();
 			VisibleEntries->Add(StaticEnum<EMonsterVisualState>()->GetNameByValue(static_cast<int64>(EMonsterVisualState::Moving)));
 			VisibleEntries->Add(StaticEnum<EMonsterVisualState>()->GetNameByValue(static_cast<int64>(EMonsterVisualState::Attacking)));
+			VisibleEntries->Add(StaticEnum<EMonsterVisualState>()->GetNameByValue(static_cast<int64>(EMonsterVisualState::Die)));
+			BlendNode->Node.AddPose();
 			BlendNode->Node.AddPose();
 			BlendNode->Node.AddPose();
 		}
@@ -324,10 +349,25 @@ bool USCTDAnimBlueprintTools::BuildMonsterStateBlendAnimGraph(UAnimBlueprint* An
 	StateGetterNode->NodePosY = -220;
 	StateGetterCreator.Finalize();
 
+	FGraphNodeCreator<UK2Node_VariableGet> PlayRateGetterCreator(*Graph);
+	UK2Node_VariableGet* PlayRateGetterNode = PlayRateGetterCreator.CreateNode();
+	PlayRateGetterNode->VariableReference.SetSelfMember(GET_MEMBER_NAME_CHECKED(UMonsterAnimInstance, PlayRate));
+	PlayRateGetterNode->NodePosX = -820;
+	PlayRateGetterNode->NodePosY = 620;
+	PlayRateGetterCreator.Finalize();
+
+	FGraphNodeCreator<UK2Node_VariableGet> LoopingGetterCreator(*Graph);
+	UK2Node_VariableGet* LoopingGetterNode = LoopingGetterCreator.CreateNode();
+	LoopingGetterNode->VariableReference.SetSelfMember(GET_MEMBER_NAME_CHECKED(UMonsterAnimInstance, bLooping));
+	LoopingGetterNode->NodePosX = -820;
+	LoopingGetterNode->NodePosY = 720;
+	LoopingGetterCreator.Finalize();
+
 	UAnimGraphNode_SequencePlayer* IdleNode = CreateSequenceNode(Graph, IdleAnimation, -560, -20, OutMessage);
 	UAnimGraphNode_SequencePlayer* WalkingNode = CreateSequenceNode(Graph, WalkingAnimation, -560, 180, OutMessage);
 	UAnimGraphNode_SequencePlayer* AttackNode = CreateSequenceNode(Graph, AttackAnimation, -560, 380, OutMessage);
-	if (!IdleNode || !WalkingNode || !AttackNode)
+	UAnimGraphNode_SequencePlayer* DeathNode = CreateSequenceNode(Graph, DeathAnimation, -560, 580, OutMessage);
+	if (!IdleNode || !WalkingNode || !AttackNode || !DeathNode)
 	{
 		return false;
 	}
@@ -362,6 +402,13 @@ bool USCTDAnimBlueprintTools::BuildMonsterStateBlendAnimGraph(UAnimBlueprint* An
 			*FString::Join(BlendPinNames, TEXT(", "))), OutMessage);
 	}
 
+	UEdGraphPin* PlayRateGetterOutputPin = FindFirstOutputPin(PlayRateGetterNode);
+	UEdGraphPin* LoopingGetterOutputPin = FindFirstOutputPin(LoopingGetterNode);
+	if (!PlayRateGetterOutputPin || !LoopingGetterOutputPin)
+	{
+		return FailWithMessage(TEXT("Could not find PlayRate or bLooping getter output pin."), OutMessage);
+	}
+
 	TArray<UEdGraphPin*> BlendPosePins = FindPosePins(BlendNode, EGPD_Input);
 	BlendPosePins.Remove(RootInputPin);
 	BlendPosePins.Sort([](const UEdGraphPin& Left, const UEdGraphPin& Right)
@@ -369,7 +416,7 @@ bool USCTDAnimBlueprintTools::BuildMonsterStateBlendAnimGraph(UAnimBlueprint* An
 		return Left.PinName.LexicalLess(Right.PinName);
 	});
 
-	if (BlendPosePins.Num() < 3)
+	if (BlendPosePins.Num() < 4)
 	{
 		TArray<FString> PinNames;
 		for (UEdGraphPin* Pin : BlendNode->Pins)
@@ -379,16 +426,28 @@ bool USCTDAnimBlueprintTools::BuildMonsterStateBlendAnimGraph(UAnimBlueprint* An
 				PinNames.Add(Pin->PinName.ToString());
 			}
 		}
-		return FailWithMessage(FString::Printf(TEXT("Blend node did not expose three pose inputs. Pins: %s"), *FString::Join(PinNames, TEXT(", "))), OutMessage);
+		return FailWithMessage(FString::Printf(TEXT("Blend node did not expose four pose inputs. Pins: %s"), *FString::Join(PinNames, TEXT(", "))), OutMessage);
 	}
 
-	UAnimGraphNode_SequencePlayer* SequenceNodes[] = { IdleNode, WalkingNode, AttackNode };
-	for (int32 Index = 0; Index < 3; ++Index)
+	UAnimGraphNode_SequencePlayer* SequenceNodes[] = { IdleNode, WalkingNode, AttackNode, DeathNode };
+	for (int32 Index = 0; Index < 4; ++Index)
 	{
 		UEdGraphPin* SequenceOutputPin = FindPosePin(SequenceNodes[Index], EGPD_Output);
 		if (!SequenceOutputPin || !Schema->TryCreateConnection(SequenceOutputPin, BlendPosePins[Index]))
 		{
 			return FailWithMessage(FString::Printf(TEXT("Could not connect sequence pose %d to blend pose input."), Index), OutMessage);
+		}
+
+		UEdGraphPin* PlayRateInputPin = SequenceNodes[Index]->FindPin(TEXT("PlayRate"));
+		if (!PlayRateInputPin || !Schema->TryCreateConnection(PlayRateGetterOutputPin, PlayRateInputPin))
+		{
+			return FailWithMessage(FString::Printf(TEXT("Could not connect PlayRate to sequence pose %d."), Index), OutMessage);
+		}
+
+		UEdGraphPin* LoopingInputPin = SequenceNodes[Index]->FindPin(TEXT("bLoopAnimation"));
+		if (!LoopingInputPin || !Schema->TryCreateConnection(LoopingGetterOutputPin, LoopingInputPin))
+		{
+			return FailWithMessage(FString::Printf(TEXT("Could not connect bLooping to sequence pose %d."), Index), OutMessage);
 		}
 	}
 

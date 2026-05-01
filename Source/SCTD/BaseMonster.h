@@ -8,6 +8,8 @@ class AHexGridManager;
 class UMonsterAIBehavior;
 class UMonsterAnimInstance;
 class UAnimSequence;
+class UMaterialInstanceDynamic;
+class UMaterialInterface;
 class UPhysicalMaterial;
 class USkeletalMeshComponent;
 class USphereComponent;
@@ -20,7 +22,8 @@ enum class EMonsterActionState : uint8
 	Idle UMETA(DisplayName = "Idle"),
 	Moving UMETA(DisplayName = "Moving"),
 	AttackPreMotion UMETA(DisplayName = "Attack Pre Motion"),
-	AttackPostMotion UMETA(DisplayName = "Attack Post Motion")
+	AttackPostMotion UMETA(DisplayName = "Attack Post Motion"),
+	Die UMETA(DisplayName = "Die")
 };
 
 UENUM(BlueprintType)
@@ -28,7 +31,8 @@ enum class EMonsterVisualState : uint8
 {
 	Idle UMETA(DisplayName = "Idle"),
 	Moving UMETA(DisplayName = "Moving"),
-	Attacking UMETA(DisplayName = "Attacking")
+	Attacking UMETA(DisplayName = "Attacking"),
+	Die UMETA(DisplayName = "Die")
 };
 
 UCLASS(Abstract, Blueprintable)
@@ -153,6 +157,18 @@ protected:
 	TArray<TObjectPtr<UAnimSequence>> AttackAnimations;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
+	TObjectPtr<UAnimSequence> DeathAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation", meta = (ClampMin = "0.01", UIMin = "0.01"))
+	float DeathAnimationDurationSeconds = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation", meta = (ClampMin = "0.01", UIMin = "0.01"))
+	float DeathFadeDurationSeconds = 0.3f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
+	TObjectPtr<UMaterialInterface> DeathFadeMaterial;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Animation")
 	TSubclassOf<UMonsterAnimInstance> MonsterAnimInstanceClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Debug")
@@ -187,7 +203,10 @@ private:
 	int32 CurrentMovementTargetTileIndex = INDEX_NONE;
 	float AttackPreMotionDuration = 0.0f;
 	float AttackPreMotionElapsed = 0.0f;
+	float DeathElapsedSeconds = 0.0f;
+	float DeathFadeElapsedSeconds = 0.0f;
 	TArray<TWeakObjectPtr<ABaseMonster>> SideForceContacts;
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> DeathFadeMaterialInstances;
 	FVector CachedSideForceDirection = FVector::ZeroVector;
 	float LastSideForceDecisionTimeSeconds = -FLT_MAX;
 	float LastVisualMovementDecisionTimeSeconds = -FLT_MAX;
@@ -198,6 +217,7 @@ private:
 	bool bHasVisualFacingYaw = false;
 	bool bSideForceDecisionPending = false;
 	bool bVisualMovementBlocked = false;
+	bool bDeathFadeStarted = false;
 
 	void CacheHexGridManager();
 	void ConfigurePhysicsBody();
@@ -207,6 +227,11 @@ private:
 	void ConfigureAnimationRootMotion();
 	void ConfigureWalkingAnimationRootMotion();
 	void TickAttackState(float DeltaSeconds);
+	void TickDeathState(float DeltaSeconds);
+	void StartDeath();
+	void StartDeathFade();
+	void ApplyDeathFadeAlpha(float Alpha);
+	void CreateDeathFadeMaterialInstances();
 	void TryStartAttack(AActor* Target);
 	void FinishAttackPreMotion();
 	void ApplyAttackToTarget(AActor* Target);
@@ -235,6 +260,7 @@ private:
 	void PlayIdleAnimation();
 	void PlayMovementAnimation();
 	void PlayAttackAnimation();
+	void PlayDeathAnimation();
 	void PushVisualStateToAnimInstance(UAnimSequence* Animation, bool bLooping, float PlayRate);
 	void SetActionState(EMonsterActionState NewActionState);
 	void LogMonsterDebug(const TCHAR* Format, ...) const;

@@ -5,6 +5,7 @@
 #include "FlyingPlayerPawn.generated.h"
 
 class AHexGridManager;
+class ABaseMonster;
 class UPlayerModelComponent;
 class UPhysicalMaterial;
 class USphereComponent;
@@ -75,6 +76,7 @@ protected:
 
 	FVector LastTraversableLocation = FVector::ZeroVector;
 	bool bHasLastTraversableLocation = false;
+	float AttackCooldownRemaining = 0.0f;
 
 private:
 	static constexpr float BaseMoveSpeed = 200.0f;
@@ -95,4 +97,7 @@ private:
 	void BounceFromBoundary(const FVector& BoundaryNormal, const FVector& SafeLocation, float MaxSpeed);
 	void ConfigureVisualMeshAttachment();
 	void MaintainFlightAltitude();
+	void TickAttack(float DeltaSeconds);
+	ABaseMonster* FindClosestAttackTarget() const;
+	int32 GetTileDistanceToActor(const AActor* Target) const;
 };

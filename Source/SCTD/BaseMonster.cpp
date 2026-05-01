@@ -8,6 +8,8 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "HexGridManager.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
 #include "MonsterAnimInstance.h"
 #include "MonsterAIBehavior.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
@@ -33,6 +35,8 @@ const TCHAR* GetMonsterActionStateName(EMonsterActionState ActionState)
 		return TEXT("AttackPreMotion");
 	case EMonsterActionState::AttackPostMotion:
 		return TEXT("AttackPostMotion");
+	case EMonsterActionState::Die:
+		return TEXT("Die");
 	default:
 		return TEXT("Unknown");
 	}
@@ -48,6 +52,8 @@ const TCHAR* GetMonsterVisualStateName(EMonsterVisualState VisualState)
 		return TEXT("Moving");
 	case EMonsterVisualState::Attacking:
 		return TEXT("Attacking");
+	case EMonsterVisualState::Die:
+		return TEXT("Die");
 	default:
 		return TEXT("Unknown");
 	}
@@ -129,6 +135,13 @@ void ABaseMonster::Tick(float DeltaSeconds)
 	ConfigureVisualMeshAttachment();
 	RestoreMeshRelativePositionAndScale();
 	ConfigureAnimationRootMotion();
+	TickDeathState(DeltaSeconds);
+	if (ActionState == EMonsterActionState::Die)
+	{
+		ClampHorizontalSpeed(0.0f);
+		return;
+	}
+
 	TickAttackState(DeltaSeconds);
 	UpdateMovementTargetFromCurrentTile();
 
@@ -202,12 +215,16 @@ void ABaseMonster::Tick(float DeltaSeconds)
 
 void ABaseMonster::ApplyDamageToMonster(float DamageAmount)
 {
-	if (!StatusComponent)
+	if (!StatusComponent || ActionState == EMonsterActionState::Die)
 	{
 		return;
 	}
 
 	StatusComponent->ApplyDamage(DamageAmount);
+	if (StatusComponent->GetCurrentHealth() <= 0.0f)
+	{
+		StartDeath();
+	}
 }
 
 float ABaseMonster::GetCurrentHealth() const
@@ -405,6 +422,132 @@ void ABaseMonster::TickAttackState(float DeltaSeconds)
 
 	SetActionState(EMonsterActionState::Moving);
 	PendingAttackTarget.Reset();
+}
+
+void ABaseMonster::TickDeathState(float DeltaSeconds)
+{
+	if (ActionState != EMonsterActionState::Die)
+	{
+		return;
+	}
+
+	if (!bDeathFadeStarted)
+	{
+		DeathElapsedSeconds += DeltaSeconds;
+		if (DeathElapsedSeconds >= FMath::Max(0.01f, DeathAnimationDurationSeconds))
+		{
+			StartDeathFade();
+		}
+		return;
+	}
+
+	DeathFadeElapsedSeconds += DeltaSeconds;
+	const float FadeDuration = FMath::Max(0.01f, DeathFadeDurationSeconds);
+	const float FadeAlpha = 1.0f - FMath::Clamp(DeathFadeElapsedSeconds / FadeDuration, 0.0f, 1.0f);
+	ApplyDeathFadeAlpha(FadeAlpha);
+	if (DeathFadeElapsedSeconds >= FadeDuration)
+	{
+		LogMonsterDebug(TEXT("Death fade finished. Destroying actor."));
+		Destroy();
+	}
+}
+
+void ABaseMonster::StartDeath()
+{
+	if (ActionState == EMonsterActionState::Die)
+	{
+		return;
+	}
+
+	SetActionState(EMonsterActionState::Die);
+	PendingAttackTarget.Reset();
+	SideForceContacts.Reset();
+	CachedSideForceDirection = FVector::ZeroVector;
+	bSideForceDecisionPending = false;
+	DeathElapsedSeconds = 0.0f;
+	DeathFadeElapsedSeconds = 0.0f;
+	bDeathFadeStarted = false;
+
+	if (PhysicsBody)
+	{
+		PhysicsBody->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		PhysicsBody->SetSimulatePhysics(false);
+		PhysicsBody->SetPhysicsLinearVelocity(FVector::ZeroVector);
+	}
+
+	ApplyDeathFadeAlpha(1.0f);
+	PlayDeathAnimation();
+	LogMonsterDebug(TEXT("Death started: animation=%.2fs fade=%.2fs"),
+		DeathAnimationDurationSeconds,
+		DeathFadeDurationSeconds);
+}
+
+void ABaseMonster::StartDeathFade()
+{
+	if (bDeathFadeStarted)
+	{
+		return;
+	}
+
+	bDeathFadeStarted = true;
+	DeathFadeElapsedSeconds = 0.0f;
+	CreateDeathFadeMaterialInstances();
+	ApplyDeathFadeAlpha(1.0f);
+	LogMonsterDebug(TEXT("Death fade started."));
+}
+
+void ABaseMonster::ApplyDeathFadeAlpha(float Alpha)
+{
+	if (!MonsterMesh)
+	{
+		return;
+	}
+
+	const float ClampedAlpha = FMath::Clamp(Alpha, 0.0f, 1.0f);
+	if (DeathFadeMaterialInstances.Num() > 0)
+	{
+		for (UMaterialInstanceDynamic* MaterialInstance : DeathFadeMaterialInstances)
+		{
+			if (!MaterialInstance)
+			{
+				continue;
+			}
+
+			MaterialInstance->SetScalarParameterValue(TEXT("Opacity"), ClampedAlpha);
+			MaterialInstance->SetScalarParameterValue(TEXT("Alpha"), ClampedAlpha);
+			MaterialInstance->SetScalarParameterValue(TEXT("FadeAlpha"), ClampedAlpha);
+			MaterialInstance->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.45f, 0.45f, 0.45f, ClampedAlpha));
+			MaterialInstance->SetVectorParameterValue(TEXT("BaseColor"), FLinearColor(0.45f, 0.45f, 0.45f, ClampedAlpha));
+		}
+	}
+	else
+	{
+		MonsterMesh->SetScalarParameterValueOnMaterials(TEXT("Opacity"), ClampedAlpha);
+		MonsterMesh->SetScalarParameterValueOnMaterials(TEXT("Alpha"), ClampedAlpha);
+		MonsterMesh->SetScalarParameterValueOnMaterials(TEXT("FadeAlpha"), ClampedAlpha);
+	}
+}
+
+void ABaseMonster::CreateDeathFadeMaterialInstances()
+{
+	DeathFadeMaterialInstances.Reset();
+	if (!MonsterMesh || !DeathFadeMaterial)
+	{
+		return;
+	}
+
+	const int32 MaterialCount = MonsterMesh->GetNumMaterials();
+	for (int32 MaterialIndex = 0; MaterialIndex < MaterialCount; ++MaterialIndex)
+	{
+		UMaterialInstanceDynamic* MaterialInstance = UMaterialInstanceDynamic::Create(DeathFadeMaterial, this);
+		if (!MaterialInstance)
+		{
+			continue;
+		}
+
+		MonsterMesh->SetMaterial(MaterialIndex, MaterialInstance);
+		DeathFadeMaterialInstances.Add(MaterialInstance);
+	}
 }
 
 void ABaseMonster::TryStartAttack(AActor* Target)
@@ -1002,6 +1145,19 @@ void ABaseMonster::PlayAttackAnimation()
 	RequestVisualState(EMonsterVisualState::Attacking, SelectedAnimation, PlayRate);
 }
 
+void ABaseMonster::PlayDeathAnimation()
+{
+	if (!MonsterMesh || !DeathAnimation)
+	{
+		return;
+	}
+
+	const float DesiredDuration = FMath::Max(0.01f, DeathAnimationDurationSeconds);
+	const float AnimationDuration = FMath::Max(0.01f, DeathAnimation->GetPlayLength());
+	const float PlayRate = AnimationDuration / DesiredDuration;
+	RequestVisualState(EMonsterVisualState::Die, DeathAnimation, PlayRate);
+}
+
 void ABaseMonster::RequestVisualState(EMonsterVisualState NewVisualState, UAnimSequence* OverrideAnimation, float PlayRate)
 {
 	UAnimSequence* Animation = OverrideAnimation ? OverrideAnimation : GetAnimationForVisualState(NewVisualState);
@@ -1021,7 +1177,7 @@ void ABaseMonster::RequestVisualState(EMonsterVisualState NewVisualState, UAnimS
 			AnimationTransitionBlendSeconds);
 	}
 
-	const bool bLooping = NewVisualState != EMonsterVisualState::Attacking;
+	const bool bLooping = NewVisualState != EMonsterVisualState::Attacking && NewVisualState != EMonsterVisualState::Die;
 	PushVisualStateToAnimInstance(Animation, bLooping, PlayRate);
 }
 
@@ -1034,6 +1190,9 @@ UAnimSequence* ABaseMonster::GetAnimationForVisualState(EMonsterVisualState InVi
 	case EMonsterVisualState::Moving:
 		return WalkingAnimation;
 	case EMonsterVisualState::Attacking:
+		return nullptr;
+	case EMonsterVisualState::Die:
+		return DeathAnimation;
 	default:
 		return nullptr;
 	}

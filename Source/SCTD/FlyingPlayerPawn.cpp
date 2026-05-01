@@ -1,7 +1,9 @@
 #include "FlyingPlayerPawn.h"
 
+#include "BaseMonster.h"
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Engine/DamageEvents.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
@@ -92,6 +94,7 @@ void AFlyingPlayerPawn::Tick(float DeltaSeconds)
 
 	MaintainFlightAltitude();
 	ConfigureVisualMeshAttachment();
+	TickAttack(DeltaSeconds);
 
 	const FVector MoveDirection = GetCameraRelativeInputDirection();
 	const bool bBoosting = PlayerModel && StatusComponent && WantsBoost() && StatusComponent->GetCurrentBoost() > 0.0f;
@@ -414,4 +417,94 @@ void AFlyingPlayerPawn::MaintainFlightAltitude()
 		Velocity.Z = 0.0f;
 		FlightBody->SetPhysicsLinearVelocity(Velocity);
 	}
+}
+
+void AFlyingPlayerPawn::TickAttack(float DeltaSeconds)
+{
+	AttackCooldownRemaining = FMath::Max(0.0f, AttackCooldownRemaining - DeltaSeconds);
+	if (AttackCooldownRemaining > 0.0f || !PlayerModel || PlayerModel->AttackSpeed <= 0.0f || PlayerModel->AttackDamage <= 0.0f)
+	{
+		return;
+	}
+
+	ABaseMonster* TargetMonster = FindClosestAttackTarget();
+	if (!TargetMonster)
+	{
+		return;
+	}
+
+	FDamageEvent DamageEvent;
+	const float AppliedDamage = TargetMonster->TakeDamage(PlayerModel->AttackDamage, DamageEvent, GetController(), this);
+	AttackCooldownRemaining = 1.0f / FMath::Max(0.01f, PlayerModel->AttackSpeed);
+	UE_LOG(LogSCTDPlayer, Log, TEXT("%s attacked %s: requested=%.2f applied=%.2f range=%.2f"),
+		*GetNameSafe(this),
+		*GetNameSafe(TargetMonster),
+		PlayerModel->AttackDamage,
+		AppliedDamage,
+		PlayerModel->AttackRange);
+}
+
+ABaseMonster* AFlyingPlayerPawn::FindClosestAttackTarget() const
+{
+	if (!PlayerModel || !HexGridManager)
+	{
+		return nullptr;
+	}
+
+	const int32 MaxTileDistance = FMath::Max(0, FMath::FloorToInt(PlayerModel->AttackRange));
+	ABaseMonster* BestTarget = nullptr;
+	int32 BestTileDistance = TNumericLimits<int32>::Max();
+	float BestWorldDistanceSquared = TNumericLimits<float>::Max();
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return nullptr;
+	}
+
+	for (TActorIterator<ABaseMonster> It(World); It; ++It)
+	{
+		ABaseMonster* Monster = *It;
+		if (!Monster || Monster->IsActorBeingDestroyed() || Monster->GetCurrentHealth() <= 0.0f)
+		{
+			continue;
+		}
+
+		const int32 TileDistance = GetTileDistanceToActor(Monster);
+		if (TileDistance < 0 || TileDistance > MaxTileDistance)
+		{
+			continue;
+		}
+
+		const float WorldDistanceSquared = FVector::DistSquared2D(GetActorLocation(), Monster->GetActorLocation());
+		if (TileDistance < BestTileDistance || (TileDistance == BestTileDistance && WorldDistanceSquared < BestWorldDistanceSquared))
+		{
+			BestTarget = Monster;
+			BestTileDistance = TileDistance;
+			BestWorldDistanceSquared = WorldDistanceSquared;
+		}
+	}
+
+	return BestTarget;
+}
+
+int32 AFlyingPlayerPawn::GetTileDistanceToActor(const AActor* Target) const
+{
+	if (!Target || !HexGridManager)
+	{
+		return -1;
+	}
+
+	FHexTileSlot PlayerSlot;
+	FHexTileSlot TargetSlot;
+	if (!HexGridManager->FindTileSlotAtWorldLocation(GetActorLocation(), PlayerSlot)
+		|| !HexGridManager->FindTileSlotAtWorldLocation(Target->GetActorLocation(), TargetSlot))
+	{
+		return -1;
+	}
+
+	const int32 DeltaQ = PlayerSlot.Q - TargetSlot.Q;
+	const int32 DeltaR = PlayerSlot.R - TargetSlot.R;
+	const int32 DeltaS = -DeltaQ - DeltaR;
+	return FMath::Max3(FMath::Abs(DeltaQ), FMath::Abs(DeltaR), FMath::Abs(DeltaS));
 }

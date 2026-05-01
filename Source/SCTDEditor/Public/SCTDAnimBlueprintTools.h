@@ -17,5 +17,5 @@ public:
 	static bool BuildSingleSequenceAnimGraph(UAnimBlueprint* AnimBlueprint, UAnimationAsset* AnimationAsset, FString& OutMessage);
 
 	UFUNCTION(BlueprintCallable, Category = "SCTD|Editor")
-	static bool BuildMonsterStateBlendAnimGraph(UAnimBlueprint* AnimBlueprint, UAnimationAsset* IdleAnimation, UAnimationAsset* WalkingAnimation, UAnimationAsset* AttackAnimation, FString& OutMessage);
+	static bool BuildMonsterStateBlendAnimGraph(UAnimBlueprint* AnimBlueprint, UAnimationAsset* IdleAnimation, UAnimationAsset* WalkingAnimation, UAnimationAsset* AttackAnimation, UAnimationAsset* DeathAnimation, FString& OutMessage);
 };

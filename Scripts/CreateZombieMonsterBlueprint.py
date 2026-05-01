@@ -7,6 +7,8 @@ ANIM_BLUEPRINT_NAME = "ABP_Zombie"
 ZOMBIE_SKELETAL_MESH_PATH = "/Game/Fab/Zombie_Number_4_-_Animated/zom_4/SkeletalMeshes/zom_4.zom_4"
 ZOMBIE_IDLE_ANIMATION_PATH = "/Game/Fab/Zombie_Number_4_-_Animated/zom_4/SkeletalMeshes/zom_4Idle_1.zom_4Idle_1"
 ZOMBIE_WALKING_ANIMATION_PATH = "/Game/Fab/Zombie_Number_4_-_Animated/zom_4/SkeletalMeshes/zom_4Walking.zom_4Walking"
+ZOMBIE_DEATH_ANIMATION_PATH = "/Game/Fab/Zombie_Number_4_-_Animated/zom_4/SkeletalMeshes/zom_4Stumble.zom_4Stumble"
+ZOMBIE_DEATH_FADE_MATERIAL_NAME = "M_ZombieDeathFade"
 ZOMBIE_ATTACK_ANIMATION_PATHS = [
     "/Game/Fab/Zombie_Number_4_-_Animated/zom_4/SkeletalMeshes/zom_4Kick_1.zom_4Kick_1",
     "/Game/Fab/Zombie_Number_4_-_Animated/zom_4/SkeletalMeshes/zom_4Kick_2.zom_4Kick_2",
@@ -20,6 +22,56 @@ def safe_set_editor_property(obj, property_name, value):
         obj.set_editor_property(property_name, value)
     except Exception as error:
         unreal.log_warning(f"Could not set {property_name}: {error}")
+
+
+def get_or_create_death_fade_material():
+    material_asset_path = f"{BLUEPRINT_PATH}/{ZOMBIE_DEATH_FADE_MATERIAL_NAME}"
+    material = unreal.EditorAssetLibrary.load_asset(material_asset_path)
+    if not material:
+        factory = unreal.MaterialFactoryNew()
+        material = unreal.AssetToolsHelpers.get_asset_tools().create_asset(
+            asset_name=ZOMBIE_DEATH_FADE_MATERIAL_NAME,
+            package_path=BLUEPRINT_PATH,
+            asset_class=unreal.Material,
+            factory=factory,
+        )
+
+    if not material:
+        return None
+
+    safe_set_editor_property(material, "blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+    safe_set_editor_property(material, "shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
+    safe_set_editor_property(material, "two_sided", True)
+
+    try:
+        unreal.MaterialEditingLibrary.delete_all_material_expressions(material)
+        color_expression = unreal.MaterialEditingLibrary.create_material_expression(
+            material,
+            unreal.MaterialExpressionVectorParameter,
+            -400,
+            -120,
+        )
+        safe_set_editor_property(color_expression, "parameter_name", "Color")
+        safe_set_editor_property(color_expression, "default_value", unreal.LinearColor(0.45, 0.45, 0.45, 1.0))
+
+        opacity_expression = unreal.MaterialEditingLibrary.create_material_expression(
+            material,
+            unreal.MaterialExpressionScalarParameter,
+            -400,
+            120,
+        )
+        safe_set_editor_property(opacity_expression, "parameter_name", "Opacity")
+        safe_set_editor_property(opacity_expression, "default_value", 1.0)
+
+        unreal.MaterialEditingLibrary.connect_material_property(color_expression, "", unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        unreal.MaterialEditingLibrary.connect_material_property(opacity_expression, "", unreal.MaterialProperty.MP_OPACITY)
+        unreal.MaterialEditingLibrary.layout_material_expressions(material)
+        unreal.MaterialEditingLibrary.recompile_material(material)
+        unreal.EditorAssetLibrary.save_loaded_asset(material)
+    except Exception as error:
+        unreal.log_warning(f"Could not rebuild zombie death fade material graph: {error}")
+
+    return material
 
 
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
@@ -123,8 +175,17 @@ except Exception as error:
     unreal.log_warning(f"Could not update zombie StatusDisplayComponent defaults: {error}")
 idle_animation = unreal.EditorAssetLibrary.load_asset(ZOMBIE_IDLE_ANIMATION_PATH)
 walking_animation = unreal.EditorAssetLibrary.load_asset(ZOMBIE_WALKING_ANIMATION_PATH)
+death_animation = unreal.EditorAssetLibrary.load_asset(ZOMBIE_DEATH_ANIMATION_PATH)
+death_fade_material = get_or_create_death_fade_material()
 safe_set_editor_property(zombie_cdo, "IdleAnimation", idle_animation)
 safe_set_editor_property(zombie_cdo, "WalkingAnimation", walking_animation)
+safe_set_editor_property(zombie_cdo, "DeathAnimation", death_animation)
+safe_set_editor_property(zombie_cdo, "DeathAnimationDurationSeconds", 1.0)
+safe_set_editor_property(zombie_cdo, "DeathFadeDurationSeconds", 0.3)
+if death_fade_material:
+    safe_set_editor_property(zombie_cdo, "DeathFadeMaterial", death_fade_material)
+else:
+    unreal.log_warning("Could not create or load zombie death fade material.")
 if anim_blueprint:
     anim_generated_class = unreal.BlueprintEditorLibrary.generated_class(anim_blueprint)
     if anim_generated_class:
@@ -143,7 +204,7 @@ for animation_path in ZOMBIE_ATTACK_ANIMATION_PATHS:
         unreal.log_warning(f"Could not load zombie attack animation: {animation_path}")
 safe_set_editor_property(zombie_cdo, "AttackAnimations", attack_animations)
 
-if anim_blueprint and idle_animation and walking_animation and attack_animations:
+if anim_blueprint and idle_animation and walking_animation and attack_animations and death_animation:
     anim_tools = getattr(unreal, "SCTDAnimBlueprintTools", None)
     if anim_tools and hasattr(anim_tools, "build_monster_state_blend_anim_graph"):
         result = anim_tools.build_monster_state_blend_anim_graph(
@@ -151,6 +212,7 @@ if anim_blueprint and idle_animation and walking_animation and attack_animations
             idle_animation,
             walking_animation,
             attack_animations[0],
+            death_animation,
         )
         unreal.log(f"Updated {ANIM_BLUEPRINT_NAME} animation graph: {result}")
     else:
