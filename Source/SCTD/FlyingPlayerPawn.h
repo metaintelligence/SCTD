@@ -8,6 +8,8 @@ class AHexGridManager;
 class UPlayerModelComponent;
 class UPhysicalMaterial;
 class USphereComponent;
+class UStatusComponent;
+class UStatusDisplayComponent;
 class UStaticMeshComponent;
 
 UCLASS(Blueprintable)
@@ -20,6 +22,7 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -30,6 +33,18 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UPlayerModelComponent> PlayerModel;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStatusComponent> StatusComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStatusDisplayComponent> StatusDisplayComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flying Player|Boost", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float BoostRecoveryRate = 10.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flying Player|Boost", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float BoostConsumeRate = 20.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flying Player", meta = (ClampMin = "0.0"))
 	float FlightAltitude = 1000.0f;

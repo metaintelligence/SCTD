@@ -11,6 +11,8 @@ class UAnimSequence;
 class UPhysicalMaterial;
 class USkeletalMeshComponent;
 class USphereComponent;
+class UStatusComponent;
+class UStatusDisplayComponent;
 
 UENUM(BlueprintType)
 enum class EMonsterActionState : uint8
@@ -39,9 +41,10 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 	UFUNCTION(BlueprintPure, Category = "Monster|Vitals")
-	float GetCurrentHealth() const { return CurrentHealth; }
+	float GetCurrentHealth() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Monster|Vitals")
 	void ApplyDamageToMonster(float DamageAmount);
@@ -71,14 +74,17 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<USkeletalMeshComponent> MonsterMesh;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStatusComponent> StatusComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UStatusDisplayComponent> StatusDisplayComponent;
+
 	UPROPERTY(EditAnywhere, Instanced, BlueprintReadWrite, Category = "Monster|AI")
 	TObjectPtr<UMonsterAIBehavior> AIBehavior;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|AI")
 	TSubclassOf<UMonsterAIBehavior> AIBehaviorClass;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Vitals", meta = (ClampMin = "0.0", UIMin = "0.0"))
-	float MaxHealth = 40.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Movement", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float MoveSpeed = 10.0f;
@@ -160,9 +166,6 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UPhysicalMaterial> RuntimePhysicsMaterial;
-
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Monster|Vitals")
-	float CurrentHealth = 40.0f;
 
 private:
 	static constexpr float BaseMoveSpeed = 200.0f;

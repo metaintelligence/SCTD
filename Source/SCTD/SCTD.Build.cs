@@ -12,7 +12,10 @@ public class SCTD : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"InputCore",
-			"PhysicsCore"
+			"PhysicsCore",
+			"Slate",
+			"SlateCore",
+			"UMG"
 		});
 	}
 }

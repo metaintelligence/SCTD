@@ -9,6 +9,10 @@
 #include "InputCoreTypes.h"
 #include "PlayerModelComponent.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
+#include "StatusComponent.h"
+#include "StatusDisplayComponent.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogSCTDPlayer, Log, All);
 
 AFlyingPlayerPawn::AFlyingPlayerPawn()
 {
@@ -37,6 +41,15 @@ AFlyingPlayerPawn::AFlyingPlayerPawn()
 	VehicleMesh->SetSimulatePhysics(false);
 
 	PlayerModel = CreateDefaultSubobject<UPlayerModelComponent>(TEXT("PlayerModel"));
+
+	StatusComponent = CreateDefaultSubobject<UStatusComponent>(TEXT("StatusComponent"));
+	StatusComponent->MaxHealth = 100.0f;
+	StatusComponent->bUsesBoost = true;
+	StatusComponent->MaxBoost = 100.0f;
+
+	StatusDisplayComponent = CreateDefaultSubobject<UStatusDisplayComponent>(TEXT("StatusDisplayComponent"));
+	StatusDisplayComponent->RelativeOffset = FVector(0.0f, 0.0f, 40.0f);
+	StatusDisplayComponent->bShowBoost = true;
 }
 
 void AFlyingPlayerPawn::BeginPlay()
@@ -81,34 +94,34 @@ void AFlyingPlayerPawn::Tick(float DeltaSeconds)
 	ConfigureVisualMeshAttachment();
 
 	const FVector MoveDirection = GetCameraRelativeInputDirection();
-	const bool bBoosting = PlayerModel && WantsBoost() && PlayerModel->GetCurrentFuel() > 0.0f;
+	const bool bBoosting = PlayerModel && StatusComponent && WantsBoost() && StatusComponent->GetCurrentBoost() > 0.0f;
 	const float MaxMoveSpeed = GetMaxMoveSpeed(bBoosting);
 
 	if (MoveDirection.IsNearlyZero())
 	{
 		ResolveTraversabilityBoundary(DeltaSeconds, MaxMoveSpeed);
-		if (PlayerModel)
+		if (StatusComponent)
 		{
-			PlayerModel->RecoverFuel(DeltaSeconds);
+			StatusComponent->RecoverBoost(DeltaSeconds, BoostRecoveryRate);
 		}
 		ClampHorizontalSpeed(MaxMoveSpeed);
 		return;
 	}
 
-	if (PlayerModel && bBoosting)
+	if (StatusComponent && bBoosting)
 	{
-		PlayerModel->ConsumeBoostFuel(DeltaSeconds);
+		StatusComponent->ConsumeBoost(DeltaSeconds, BoostConsumeRate);
 	}
 
 	ApplyMovementForce(MoveDirection, bBoosting);
 	ClampHorizontalSpeed(MaxMoveSpeed);
 	ResolveTraversabilityBoundary(DeltaSeconds, MaxMoveSpeed);
 
-	if (PlayerModel)
+	if (StatusComponent)
 	{
 		if (!bBoosting)
 		{
-			PlayerModel->RecoverFuel(DeltaSeconds);
+			StatusComponent->RecoverBoost(DeltaSeconds, BoostRecoveryRate);
 		}
 	}
 
@@ -128,6 +141,21 @@ void AFlyingPlayerPawn::Tick(float DeltaSeconds)
 		}
 	}
 
+}
+
+float AFlyingPlayerPawn::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	if (StatusComponent)
+	{
+		StatusComponent->ApplyDamage(AppliedDamage > 0.0f ? AppliedDamage : DamageAmount);
+	}
+	UE_LOG(LogSCTDPlayer, Log, TEXT("%s took damage: requested=%.2f applied=%.2f health=%.2f"),
+		*GetNameSafe(this),
+		DamageAmount,
+		AppliedDamage,
+		StatusComponent ? StatusComponent->GetCurrentHealth() : -1.0f);
+	return AppliedDamage;
 }
 
 void AFlyingPlayerPawn::CacheHexGridManager()

@@ -11,6 +11,8 @@
 #include "MonsterAnimInstance.h"
 #include "MonsterAIBehavior.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
+#include "StatusComponent.h"
+#include "StatusDisplayComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSCTDMonster, Log, All);
 
@@ -77,13 +79,20 @@ ABaseMonster::ABaseMonster()
 	MonsterMesh->SetMobility(EComponentMobility::Movable);
 	MonsterMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	MonsterMesh->SetSimulatePhysics(false);
+
+	StatusComponent = CreateDefaultSubobject<UStatusComponent>(TEXT("StatusComponent"));
+	StatusComponent->MaxHealth = 40.0f;
+	StatusComponent->bUsesBoost = false;
+
+	StatusDisplayComponent = CreateDefaultSubobject<UStatusDisplayComponent>(TEXT("StatusDisplayComponent"));
+	StatusDisplayComponent->RelativeOffset = FVector(0.0f, 0.0f, 40.0f);
+	StatusDisplayComponent->bShowBoost = false;
 }
 
 void ABaseMonster::BeginPlay()
 {
 	Super::BeginPlay();
 
-	CurrentHealth = MaxHealth;
 	if (!AIBehavior && AIBehaviorClass)
 	{
 		AIBehavior = NewObject<UMonsterAIBehavior>(this, AIBehaviorClass);
@@ -193,12 +202,24 @@ void ABaseMonster::Tick(float DeltaSeconds)
 
 void ABaseMonster::ApplyDamageToMonster(float DamageAmount)
 {
-	if (DamageAmount <= 0.0f)
+	if (!StatusComponent)
 	{
 		return;
 	}
 
-	CurrentHealth = FMath::Max(0.0f, CurrentHealth - DamageAmount);
+	StatusComponent->ApplyDamage(DamageAmount);
+}
+
+float ABaseMonster::GetCurrentHealth() const
+{
+	return StatusComponent ? StatusComponent->GetCurrentHealth() : 0.0f;
+}
+
+float ABaseMonster::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	ApplyDamageToMonster(AppliedDamage > 0.0f ? AppliedDamage : DamageAmount);
+	return AppliedDamage;
 }
 
 void ABaseMonster::SetTargetMoveTileWorldLocation(const FVector& TargetMoveTileWorldLocation)
@@ -432,7 +453,11 @@ void ABaseMonster::ApplyAttackToTarget(AActor* Target)
 	}
 
 	FDamageEvent DamageEvent;
-	Target->TakeDamage(AttackDamage, DamageEvent, GetController(), this);
+	const float AppliedDamage = Target->TakeDamage(AttackDamage, DamageEvent, GetController(), this);
+	LogMonsterDebug(TEXT("Applied attack damage: target=%s requested=%.2f applied=%.2f"),
+		*GetNameSafe(Target),
+		AttackDamage,
+		AppliedDamage);
 }
 
 void ABaseMonster::UpdateAttackFacing(float DeltaSeconds)

@@ -46,17 +46,36 @@ safe_set_editor_property(pawn_cdo, "bConstrainToHexGrid", True)
 safe_set_editor_property(pawn_cdo, "CollisionRadius", 50.0)
 safe_set_editor_property(pawn_cdo, "LinearDamping", 1.0)
 safe_set_editor_property(pawn_cdo, "CollisionRestitution", 0.85)
+safe_set_editor_property(pawn_cdo, "BoostRecoveryRate", 10.0)
+safe_set_editor_property(pawn_cdo, "BoostConsumeRate", 20.0)
+
+try:
+    status_component = pawn_cdo.get_editor_property("StatusComponent")
+    safe_set_editor_property(status_component, "MaxHealth", 100.0)
+    safe_set_editor_property(status_component, "bUsesBoost", True)
+    safe_set_editor_property(status_component, "MaxBoost", 100.0)
+except Exception as error:
+    unreal.log_warning(f"Could not update StatusComponent defaults: {error}")
+
+try:
+    status_display_component = pawn_cdo.get_editor_property("StatusDisplayComponent")
+    safe_set_editor_property(status_display_component, "RelativeOffset", unreal.Vector(0.0, 0.0, 40.0))
+    safe_set_editor_property(status_display_component, "VisibleSecondsAfterChange", 2.0)
+    safe_set_editor_property(status_display_component, "bShowBoost", True)
+    safe_set_editor_property(status_display_component, "GaugeWidth", 120.0)
+    safe_set_editor_property(status_display_component, "GaugeHeight", 12.0)
+    safe_set_editor_property(status_display_component, "GaugeOffsetPx", 2.0)
+    safe_set_editor_property(status_display_component, "HealthFillHexColor", "#FF0000")
+    safe_set_editor_property(status_display_component, "BoostFillHexColor", "#00FF00")
+except Exception as error:
+    unreal.log_warning(f"Could not update StatusDisplayComponent defaults: {error}")
 
 try:
     player_model = pawn_cdo.get_editor_property("PlayerModel")
-    safe_set_editor_property(player_model, "MaxHealth", 100.0)
-    safe_set_editor_property(player_model, "MaxFuel", 100.0)
-    safe_set_editor_property(player_model, "FuelRecoveryRate", 10.0)
     safe_set_editor_property(player_model, "MoveSpeed", 30.0)
     safe_set_editor_property(player_model, "BoostSpeedMultiplier", 2.0)
     safe_set_editor_property(player_model, "MovementMass", 100.0)
     safe_set_editor_property(player_model, "SecondsToReachMaxSpeed", 0.25)
-    safe_set_editor_property(player_model, "BoostFuelConsumeRate", 20.0)
     safe_set_editor_property(player_model, "BuildSpeed", 10.0)
     safe_set_editor_property(player_model, "AttackSpeed", 1.0)
     safe_set_editor_property(player_model, "AttackRange", 5.0)

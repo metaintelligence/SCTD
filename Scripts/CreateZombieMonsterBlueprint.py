@@ -82,7 +82,6 @@ if not generated_class:
     raise RuntimeError(f"Generated Blueprint class not found: {blueprint_asset_path}")
 
 zombie_cdo = unreal.get_default_object(generated_class)
-safe_set_editor_property(zombie_cdo, "MaxHealth", 40.0)
 safe_set_editor_property(zombie_cdo, "MoveSpeed", 10.0)
 safe_set_editor_property(zombie_cdo, "AttackDamage", 2.0)
 safe_set_editor_property(zombie_cdo, "AttackCooldownSeconds", 7.0)
@@ -104,6 +103,24 @@ safe_set_editor_property(zombie_cdo, "AnimationTransitionBlendSeconds", 0.15)
 safe_set_editor_property(zombie_cdo, "bLogMonsterDebug", True)
 safe_set_editor_property(zombie_cdo, "AIBehavior", None)
 safe_set_editor_property(zombie_cdo, "AIBehaviorClass", unreal.BasicMonsterAIBehavior)
+try:
+    status_component = zombie_cdo.get_editor_property("StatusComponent")
+    safe_set_editor_property(status_component, "MaxHealth", 40.0)
+    safe_set_editor_property(status_component, "bUsesBoost", False)
+except Exception as error:
+    unreal.log_warning(f"Could not update zombie StatusComponent defaults: {error}")
+try:
+    status_display_component = zombie_cdo.get_editor_property("StatusDisplayComponent")
+    safe_set_editor_property(status_display_component, "RelativeOffset", unreal.Vector(0.0, 0.0, 40.0))
+    safe_set_editor_property(status_display_component, "VisibleSecondsAfterChange", 2.0)
+    safe_set_editor_property(status_display_component, "bShowBoost", False)
+    safe_set_editor_property(status_display_component, "GaugeWidth", 120.0)
+    safe_set_editor_property(status_display_component, "GaugeHeight", 12.0)
+    safe_set_editor_property(status_display_component, "GaugeOffsetPx", 2.0)
+    safe_set_editor_property(status_display_component, "HealthFillHexColor", "#FF0000")
+    safe_set_editor_property(status_display_component, "BoostFillHexColor", "#00FF00")
+except Exception as error:
+    unreal.log_warning(f"Could not update zombie StatusDisplayComponent defaults: {error}")
 idle_animation = unreal.EditorAssetLibrary.load_asset(ZOMBIE_IDLE_ANIMATION_PATH)
 walking_animation = unreal.EditorAssetLibrary.load_asset(ZOMBIE_WALKING_ANIMATION_PATH)
 safe_set_editor_property(zombie_cdo, "IdleAnimation", idle_animation)
