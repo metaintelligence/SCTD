@@ -31,6 +31,7 @@ public:
 	AFlyingPlayerPawn();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -76,6 +77,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flying Player|Debug")
 	bool bLogAircraftStateDebug = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flying Player|HUD")
+	bool bEnablePrototypeHUD = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flying Player")
 	TObjectPtr<AHexGridManager> HexGridManager;
@@ -126,11 +130,15 @@ private:
 	void ApplyAngularFacingToward(const FVector& TargetLocation, float DeltaSeconds);
 	float GetVehicleYaw() const;
 	void SetVehicleYaw(float NewYaw);
+	void EnsurePrototypeHUDWidget();
 	ABaseMonster* FindClosestAttackTarget() const;
 	int32 GetTileDistanceToActor(const AActor* Target) const;
 	const TCHAR* GetAircraftStateName(EPlayerAircraftState State) const;
 	void LogAircraftDebug(const TCHAR* Format, ...) const;
 
 	TWeakObjectPtr<ABaseMonster> CurrentAttackTarget;
+	UPROPERTY(Transient)
+	TObjectPtr<class USCTDHUDWidget> PrototypeHUDWidget;
+
 	float VisualYawAngularVelocityDegreesPerSecond = 0.0f;
 };

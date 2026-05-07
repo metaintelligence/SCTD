@@ -33,7 +33,7 @@ if not generated_class:
 
 camera_cdo = unreal.get_default_object(generated_class)
 camera_cdo.set_editor_property("bEnableEdgeScroll", True)
-camera_cdo.set_editor_property("EdgeScrollMarginPixels", 36.0)
+camera_cdo.set_editor_property("EdgeScrollMarginViewportRatio", 0.01)
 camera_cdo.set_editor_property("EdgeScrollSpeed", 20000.0)
 camera_cdo.set_editor_property("bUseSmoothEdgeStrength", True)
 camera_cdo.set_editor_property("bSetAsPlayerViewTargetOnBeginPlay", True)

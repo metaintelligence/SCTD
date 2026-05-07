@@ -22,8 +22,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Top Down Camera")
 	bool bEnableEdgeScroll = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Top Down Camera", meta = (ClampMin = "1.0"))
-	float EdgeScrollMarginPixels = 36.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Top Down Camera", meta = (ClampMin = "0.001", ClampMax = "0.5", UIMin = "0.001", UIMax = "0.1"))
+	float EdgeScrollMarginViewportRatio = 0.01f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Top Down Camera", meta = (ClampMin = "0.0"))
 	float EdgeScrollSpeed = 20000.0f;
@@ -121,6 +121,7 @@ private:
 	float DamageShakeRemainingSeconds = 0.0f;
 	float DamageOverlayFlashRemainingSeconds = 0.0f;
 	float DamageOverlayPeakOpacity = 0.0f;
+	bool bWasEdgeScrollingLastFrame = false;
 	FVector LastDamageShakeOffset = FVector::ZeroVector;
 
 	void CacheFollowPawn();

@@ -2,10 +2,14 @@
 
 #include "DamageFlashOverlayWidget.h"
 #include "EngineUtils.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "Framework/Application/SlateApplication.h"
 #include "FlyingPlayerPawn.h"
 #include "GameFramework/PlayerController.h"
 #include "InputCoreTypes.h"
 #include "StatusComponent.h"
+#include "Widgets/SViewport.h"
 
 ATopDownEdgeScrollCamera::ATopDownEdgeScrollCamera()
 {
@@ -55,6 +59,11 @@ void ATopDownEdgeScrollCamera::Tick(float DeltaSeconds)
 
 	const FVector EdgeScrollMoveDirection = GetEdgeScrollMoveDirection();
 	const bool bWantsEdgeScroll = bEnableEdgeScroll && EdgeScrollSpeed > 0.0f && !EdgeScrollMoveDirection.IsNearlyZero();
+	if (bWasEdgeScrollingLastFrame && !bWantsEdgeScroll)
+	{
+		CameraVelocity = FVector::ZeroVector;
+	}
+
 	if (bFollowPlayer)
 	{
 		HandleMouseWheelZoom(DeltaSeconds);
@@ -66,10 +75,13 @@ void ATopDownEdgeScrollCamera::Tick(float DeltaSeconds)
 
 	if (!bWantsEdgeScroll)
 	{
+		bWasEdgeScrollingLastFrame = false;
 		ApplyDamageShake(DeltaSeconds);
 		return;
 	}
 
+	CameraVelocity = FVector::ZeroVector;
+	bWasEdgeScrollingLastFrame = true;
 	FVector NewLocation = GetActorLocation() + EdgeScrollMoveDirection * EdgeScrollSpeed * DeltaSeconds;
 	if (bClampToBounds)
 	{
@@ -191,7 +203,7 @@ float ATopDownEdgeScrollCamera::GetZoomStepDistance() const
 
 FVector ATopDownEdgeScrollCamera::GetEdgeScrollMoveDirection() const
 {
-	if (!bEnableEdgeScroll || EdgeScrollSpeed <= 0.0f || EdgeScrollMarginPixels <= 0.0f)
+	if (!bEnableEdgeScroll || EdgeScrollSpeed <= 0.0f || EdgeScrollMarginViewportRatio <= 0.0f)
 	{
 		return FVector::ZeroVector;
 	}
@@ -212,7 +224,35 @@ FVector ATopDownEdgeScrollCamera::GetEdgeScrollMoveDirection() const
 
 	float MouseX = 0.0f;
 	float MouseY = 0.0f;
-	if (!PlayerController->GetMousePosition(MouseX, MouseY))
+	bool bHasMousePosition = false;
+
+	if (FSlateApplication::IsInitialized() && GEngine && GEngine->GameViewport)
+	{
+		const TSharedPtr<SViewport> GameViewportWidget = GEngine->GameViewport->GetGameViewportWidget();
+		if (GameViewportWidget.IsValid())
+		{
+			const FGeometry& ViewportGeometry = GameViewportWidget->GetCachedGeometry();
+			const FVector2D ViewportLocalSize = ViewportGeometry.GetLocalSize();
+			const FVector2D CursorPosition = FSlateApplication::Get().GetCursorPos();
+			const FVector2D LocalCursorPosition = ViewportGeometry.AbsoluteToLocal(CursorPosition);
+
+			if (ViewportLocalSize.X > 0.0f && ViewportLocalSize.Y > 0.0f)
+			{
+				ViewportSizeX = FMath::RoundToInt(ViewportLocalSize.X);
+				ViewportSizeY = FMath::RoundToInt(ViewportLocalSize.Y);
+				MouseX = LocalCursorPosition.X;
+				MouseY = LocalCursorPosition.Y;
+				bHasMousePosition = true;
+			}
+		}
+	}
+
+	if (!bHasMousePosition)
+	{
+		bHasMousePosition = PlayerController->GetMousePosition(MouseX, MouseY);
+	}
+
+	if (!bHasMousePosition)
 	{
 		return FVector::ZeroVector;
 	}
@@ -222,8 +262,9 @@ FVector ATopDownEdgeScrollCamera::GetEdgeScrollMoveDirection() const
 		return FVector::ZeroVector;
 	}
 
-	const float MarginX = FMath::Min(EdgeScrollMarginPixels, ViewportSizeX * 0.5f);
-	const float MarginY = FMath::Min(EdgeScrollMarginPixels, ViewportSizeY * 0.5f);
+	const float SafeMarginRatio = FMath::Clamp(EdgeScrollMarginViewportRatio, 0.001f, 0.5f);
+	const float MarginX = FMath::Max(1.0f, ViewportSizeX * SafeMarginRatio);
+	const float MarginY = FMath::Max(1.0f, ViewportSizeY * SafeMarginRatio);
 
 	float HorizontalInput = 0.0f;
 	if (MouseX <= MarginX)

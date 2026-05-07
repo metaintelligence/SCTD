@@ -48,6 +48,7 @@ safe_set_editor_property(pawn_cdo, "LinearDamping", 1.0)
 safe_set_editor_property(pawn_cdo, "CollisionRestitution", 0.85)
 safe_set_editor_property(pawn_cdo, "BoostRecoveryRate", 10.0)
 safe_set_editor_property(pawn_cdo, "BoostConsumeRate", 20.0)
+safe_set_editor_property(pawn_cdo, "bEnablePrototypeHUD", True)
 
 try:
     status_component = pawn_cdo.get_editor_property("StatusComponent")
@@ -78,7 +79,7 @@ try:
     safe_set_editor_property(player_model, "SecondsToReachMaxSpeed", 0.25)
     safe_set_editor_property(player_model, "BuildSpeed", 10.0)
     safe_set_editor_property(player_model, "AttackSpeed", 1.0)
-    safe_set_editor_property(player_model, "AttackRange", 5.0)
+    safe_set_editor_property(player_model, "AttackRange", 2.0)
     safe_set_editor_property(player_model, "AttackDamage", 5.0)
 except Exception as error:
     unreal.log_warning(f"Could not update PlayerModel defaults: {error}")

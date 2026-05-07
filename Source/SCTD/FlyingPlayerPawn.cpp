@@ -11,6 +11,7 @@
 #include "InputCoreTypes.h"
 #include "PlayerModelComponent.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
+#include "SCTDHUDWidget.h"
 #include "StatusComponent.h"
 #include "StatusDisplayComponent.h"
 #include "TopDownEdgeScrollCamera.h"
@@ -60,6 +61,7 @@ void AFlyingPlayerPawn::BeginPlay()
 	Super::BeginPlay();
 
 	CacheHexGridManager();
+	EnsurePrototypeHUDWidget();
 	ConfigureVisualMeshAttachment();
 	MaintainFlightAltitude();
 
@@ -89,10 +91,22 @@ void AFlyingPlayerPawn::BeginPlay()
 	}
 }
 
+void AFlyingPlayerPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (PrototypeHUDWidget)
+	{
+		PrototypeHUDWidget->RemoveFromParent();
+		PrototypeHUDWidget = nullptr;
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
 void AFlyingPlayerPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	EnsurePrototypeHUDWidget();
 	MaintainFlightAltitude();
 	ConfigureVisualMeshAttachment();
 
@@ -585,6 +599,27 @@ void AFlyingPlayerPawn::SetVehicleYaw(float NewYaw)
 	else
 	{
 		SetActorRotation(FRotator(0.0f, NewYaw, 0.0f));
+	}
+}
+
+void AFlyingPlayerPawn::EnsurePrototypeHUDWidget()
+{
+	if (!bEnablePrototypeHUD || PrototypeHUDWidget)
+	{
+		return;
+	}
+
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (!PlayerController || PlayerController->GetPawn() != this)
+	{
+		return;
+	}
+
+	PrototypeHUDWidget = CreateWidget<USCTDHUDWidget>(PlayerController, USCTDHUDWidget::StaticClass());
+	if (PrototypeHUDWidget)
+	{
+		PrototypeHUDWidget->SetObservedPawn(this);
+		PrototypeHUDWidget->AddToViewport(50);
 	}
 }
 

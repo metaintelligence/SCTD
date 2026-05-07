@@ -33,7 +33,7 @@ public:
 	float AttackSpeed = 1.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Model|Attack", meta = (ClampMin = "0.0", UIMin = "0.0"))
-	float AttackRange = 5.0f;
+	float AttackRange = 2.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Model|Attack", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float AttackDamage = 5.0f;
