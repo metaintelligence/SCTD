@@ -1,9 +1,11 @@
 #include "TopDownEdgeScrollCamera.h"
 
+#include "DamageFlashOverlayWidget.h"
 #include "EngineUtils.h"
 #include "FlyingPlayerPawn.h"
 #include "GameFramework/PlayerController.h"
 #include "InputCoreTypes.h"
+#include "StatusComponent.h"
 
 ATopDownEdgeScrollCamera::ATopDownEdgeScrollCamera()
 {
@@ -36,6 +38,7 @@ void ATopDownEdgeScrollCamera::BeginPlay()
 	PlayerController->SetInputMode(InputMode);
 
 	CacheFollowPawn();
+	EnsureDamageFlashOverlayWidget();
 	if (bFollowPlayer && bUseInitialOffsetFromPlayer && FollowPawn.IsValid())
 	{
 		PlayerFollowOffset = GetActorLocation() - FollowPawn->GetActorLocation();
@@ -46,6 +49,9 @@ void ATopDownEdgeScrollCamera::BeginPlay()
 void ATopDownEdgeScrollCamera::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+
+	ClearPreviousDamageShakeOffset();
+	UpdateDamageOverlayFlash(DeltaSeconds);
 
 	const FVector EdgeScrollMoveDirection = GetEdgeScrollMoveDirection();
 	const bool bWantsEdgeScroll = bEnableEdgeScroll && EdgeScrollSpeed > 0.0f && !EdgeScrollMoveDirection.IsNearlyZero();
@@ -60,6 +66,7 @@ void ATopDownEdgeScrollCamera::Tick(float DeltaSeconds)
 
 	if (!bWantsEdgeScroll)
 	{
+		ApplyDamageShake(DeltaSeconds);
 		return;
 	}
 
@@ -71,6 +78,16 @@ void ATopDownEdgeScrollCamera::Tick(float DeltaSeconds)
 	}
 
 	SetActorLocation(NewLocation);
+	ApplyDamageShake(DeltaSeconds);
+}
+
+void ATopDownEdgeScrollCamera::PlayDamageFeedback()
+{
+	DamageShakeRemainingSeconds = FMath::Max(DamageShakeRemainingSeconds, DamageShakeDurationSeconds);
+	DamageOverlayPeakOpacity = CalculateLowHealthOverlayOpacity();
+	DamageOverlayFlashRemainingSeconds = DamageOverlayPeakOpacity > 0.0f
+		? FMath::Max(DamageOverlayFlashRemainingSeconds, DamageOverlayFlashDurationSeconds)
+		: 0.0f;
 }
 
 void ATopDownEdgeScrollCamera::CacheFollowPawn()
@@ -278,4 +295,107 @@ float ATopDownEdgeScrollCamera::GetEdgeStrength(float DistanceToEdge, float Marg
 	}
 
 	return FMath::Clamp(1.0f - DistanceToEdge / Margin, 0.0f, 1.0f);
+}
+
+void ATopDownEdgeScrollCamera::ClearPreviousDamageShakeOffset()
+{
+	if (LastDamageShakeOffset.IsNearlyZero())
+	{
+		return;
+	}
+
+	SetActorLocation(GetActorLocation() - LastDamageShakeOffset);
+	LastDamageShakeOffset = FVector::ZeroVector;
+}
+
+void ATopDownEdgeScrollCamera::ApplyDamageShake(float DeltaSeconds)
+{
+	if (DamageShakeRemainingSeconds <= 0.0f || DamageShakeDurationSeconds <= 0.0f || DamageShakeAmplitude <= 0.0f)
+	{
+		DamageShakeRemainingSeconds = 0.0f;
+		return;
+	}
+
+	DamageShakeRemainingSeconds = FMath::Max(0.0f, DamageShakeRemainingSeconds - DeltaSeconds);
+	const float ShakeAlpha = DamageShakeDurationSeconds > 0.0f
+		? FMath::Clamp(DamageShakeRemainingSeconds / DamageShakeDurationSeconds, 0.0f, 1.0f)
+		: 0.0f;
+	const float CurrentAmplitude = DamageShakeAmplitude * ShakeAlpha;
+	LastDamageShakeOffset = FVector(
+		FMath::RandRange(-CurrentAmplitude, CurrentAmplitude),
+		FMath::RandRange(-CurrentAmplitude, CurrentAmplitude),
+		FMath::RandRange(-CurrentAmplitude * 0.35f, CurrentAmplitude * 0.35f));
+
+	SetActorLocation(GetActorLocation() + LastDamageShakeOffset);
+}
+
+void ATopDownEdgeScrollCamera::EnsureDamageFlashOverlayWidget()
+{
+	if (DamageFlashOverlayWidget)
+	{
+		return;
+	}
+
+	APlayerController* PlayerController = GetWorld() ? GetWorld()->GetFirstPlayerController() : nullptr;
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	DamageFlashOverlayWidget = CreateWidget<UDamageFlashOverlayWidget>(PlayerController, UDamageFlashOverlayWidget::StaticClass());
+	if (DamageFlashOverlayWidget)
+	{
+		DamageFlashOverlayWidget->AddToViewport(1000);
+		DamageFlashOverlayWidget->SetOverlayColorAndOpacity(ParseHexColor(DamageOverlayColorHex, FLinearColor::Red), 0.0f);
+	}
+}
+
+void ATopDownEdgeScrollCamera::UpdateDamageOverlayFlash(float DeltaSeconds)
+{
+	EnsureDamageFlashOverlayWidget();
+	if (!DamageFlashOverlayWidget)
+	{
+		return;
+	}
+
+	if (DamageOverlayFlashRemainingSeconds <= 0.0f || DamageOverlayFlashDurationSeconds <= 0.0f)
+	{
+		DamageOverlayFlashRemainingSeconds = 0.0f;
+		DamageFlashOverlayWidget->SetOverlayColorAndOpacity(ParseHexColor(DamageOverlayColorHex, FLinearColor::Red), 0.0f);
+		return;
+	}
+
+	DamageOverlayFlashRemainingSeconds = FMath::Max(0.0f, DamageOverlayFlashRemainingSeconds - DeltaSeconds);
+	const float FlashAlpha = FMath::Clamp(DamageOverlayFlashRemainingSeconds / DamageOverlayFlashDurationSeconds, 0.0f, 1.0f);
+	DamageFlashOverlayWidget->SetOverlayColorAndOpacity(
+		ParseHexColor(DamageOverlayColorHex, FLinearColor::Red),
+		DamageOverlayPeakOpacity * FlashAlpha);
+}
+
+float ATopDownEdgeScrollCamera::CalculateLowHealthOverlayOpacity()
+{
+	CacheFollowPawn();
+	const UStatusComponent* StatusComponent = FollowPawn.IsValid() ? FollowPawn->FindComponentByClass<UStatusComponent>() : nullptr;
+	const float HealthRatio = StatusComponent ? StatusComponent->GetHealthRatio() : 1.0f;
+	const float SafeOverlayStartRatio = FMath::Clamp(LowHealthOverlayStartRatio, 0.0f, 1.0f);
+	return SafeOverlayStartRatio > 0.0f
+		? FMath::Clamp((SafeOverlayStartRatio - HealthRatio) / SafeOverlayStartRatio, 0.0f, 1.0f)
+		: (HealthRatio <= 0.0f ? 1.0f : 0.0f);
+}
+
+FLinearColor ATopDownEdgeScrollCamera::ParseHexColor(const FString& HexColor, const FLinearColor& FallbackColor) const
+{
+	FString NormalizedHex = HexColor.TrimStartAndEnd();
+	if (NormalizedHex.StartsWith(TEXT("#")))
+	{
+		NormalizedHex.RightChopInline(1);
+	}
+
+	if (NormalizedHex.Len() != 6 && NormalizedHex.Len() != 8)
+	{
+		return FallbackColor;
+	}
+
+	const FColor ParsedColor = FColor::FromHex(NormalizedHex);
+	return FLinearColor(ParsedColor);
 }

@@ -13,6 +13,7 @@
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "StatusComponent.h"
 #include "StatusDisplayComponent.h"
+#include "TopDownEdgeScrollCamera.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSCTDPlayer, Log, All);
 
@@ -94,9 +95,11 @@ void AFlyingPlayerPawn::Tick(float DeltaSeconds)
 
 	MaintainFlightAltitude();
 	ConfigureVisualMeshAttachment();
-	TickAttack(DeltaSeconds);
 
 	const FVector MoveDirection = GetCameraRelativeInputDirection();
+	UpdateAircraftState(IsMovementInputHeld());
+	TickAttack(DeltaSeconds);
+
 	const bool bBoosting = PlayerModel && StatusComponent && WantsBoost() && StatusComponent->GetCurrentBoost() > 0.0f;
 	const float MaxMoveSpeed = GetMaxMoveSpeed(bBoosting);
 
@@ -152,6 +155,13 @@ float AFlyingPlayerPawn::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 	if (StatusComponent)
 	{
 		StatusComponent->ApplyDamage(AppliedDamage > 0.0f ? AppliedDamage : DamageAmount);
+	}
+	if (UWorld* World = GetWorld())
+	{
+		for (TActorIterator<ATopDownEdgeScrollCamera> It(World); It; ++It)
+		{
+			It->PlayDamageFeedback();
+		}
 	}
 	UE_LOG(LogSCTDPlayer, Log, TEXT("%s took damage: requested=%.2f applied=%.2f health=%.2f"),
 		*GetNameSafe(this),
@@ -227,6 +237,20 @@ bool AFlyingPlayerPawn::WantsBoost() const
 	}
 
 	return PlayerController->IsInputKeyDown(EKeys::LeftShift) || PlayerController->IsInputKeyDown(EKeys::RightShift);
+}
+
+bool AFlyingPlayerPawn::IsMovementInputHeld() const
+{
+	const APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (!PlayerController)
+	{
+		return false;
+	}
+
+	return PlayerController->IsInputKeyDown(EKeys::W)
+		|| PlayerController->IsInputKeyDown(EKeys::A)
+		|| PlayerController->IsInputKeyDown(EKeys::S)
+		|| PlayerController->IsInputKeyDown(EKeys::D);
 }
 
 float AFlyingPlayerPawn::GetMaxMoveSpeed(bool bBoosting) const
@@ -419,16 +443,82 @@ void AFlyingPlayerPawn::MaintainFlightAltitude()
 	}
 }
 
-void AFlyingPlayerPawn::TickAttack(float DeltaSeconds)
+void AFlyingPlayerPawn::UpdateAircraftState(bool bMovementInputHeld)
 {
-	AttackCooldownRemaining = FMath::Max(0.0f, AttackCooldownRemaining - DeltaSeconds);
-	if (AttackCooldownRemaining > 0.0f || !PlayerModel || PlayerModel->AttackSpeed <= 0.0f || PlayerModel->AttackDamage <= 0.0f)
+	if (bMovementInputHeld)
+	{
+		CurrentAttackTarget.Reset();
+		SetAircraftState(EPlayerAircraftState::Flying);
+		return;
+	}
+
+	if (AircraftState == EPlayerAircraftState::Flying)
+	{
+		SetAircraftState(EPlayerAircraftState::Idle);
+		return;
+	}
+
+	if (AircraftState == EPlayerAircraftState::Attack)
+	{
+		ABaseMonster* TargetMonster = FindClosestAttackTarget();
+		if (TargetMonster)
+		{
+			CurrentAttackTarget = TargetMonster;
+			return;
+		}
+
+		CurrentAttackTarget.Reset();
+		SetAircraftState(EPlayerAircraftState::Idle);
+		return;
+	}
+
+	if (AircraftState == EPlayerAircraftState::Idle)
+	{
+		if (ABaseMonster* TargetMonster = FindClosestAttackTarget())
+		{
+			CurrentAttackTarget = TargetMonster;
+			SetAircraftState(EPlayerAircraftState::Attack);
+		}
+	}
+}
+
+void AFlyingPlayerPawn::SetAircraftState(EPlayerAircraftState NewState)
+{
+	if (AircraftState == NewState)
 	{
 		return;
 	}
 
-	ABaseMonster* TargetMonster = FindClosestAttackTarget();
+	const EPlayerAircraftState PreviousState = AircraftState;
+	AircraftState = NewState;
+	if (NewState != EPlayerAircraftState::Attack)
+	{
+		VisualYawAngularVelocityDegreesPerSecond = 0.0f;
+	}
+	LogAircraftDebug(TEXT("Aircraft state changed: %s -> %s"),
+		GetAircraftStateName(PreviousState),
+		GetAircraftStateName(NewState));
+}
+
+void AFlyingPlayerPawn::TickAttack(float DeltaSeconds)
+{
+	AttackCooldownRemaining = FMath::Max(0.0f, AttackCooldownRemaining - DeltaSeconds);
+	if (AircraftState != EPlayerAircraftState::Attack)
+	{
+		return;
+	}
+
+	ABaseMonster* TargetMonster = CurrentAttackTarget.Get();
 	if (!TargetMonster)
+	{
+		CurrentAttackTarget.Reset();
+		SetAircraftState(EPlayerAircraftState::Idle);
+		return;
+	}
+
+	UpdateAttackFacing(DeltaSeconds);
+
+	if (AttackCooldownRemaining > 0.0f || !PlayerModel || PlayerModel->AttackSpeed <= 0.0f || PlayerModel->AttackDamage <= 0.0f)
 	{
 		return;
 	}
@@ -442,6 +532,60 @@ void AFlyingPlayerPawn::TickAttack(float DeltaSeconds)
 		PlayerModel->AttackDamage,
 		AppliedDamage,
 		PlayerModel->AttackRange);
+}
+
+void AFlyingPlayerPawn::UpdateAttackFacing(float DeltaSeconds)
+{
+	if (!bAlignToMovementDirection)
+	{
+		return;
+	}
+
+	if (ABaseMonster* TargetMonster = CurrentAttackTarget.Get())
+	{
+		ApplyAngularFacingToward(TargetMonster->GetActorLocation(), DeltaSeconds);
+	}
+}
+
+void AFlyingPlayerPawn::ApplyAngularFacingToward(const FVector& TargetLocation, float DeltaSeconds)
+{
+	if (DeltaSeconds <= 0.0f)
+	{
+		return;
+	}
+
+	FVector Direction = TargetLocation - GetActorLocation();
+	Direction.Z = 0.0f;
+	if (Direction.IsNearlyZero())
+	{
+		return;
+	}
+
+	const float CurrentYaw = GetVehicleYaw();
+	const float TargetYaw = Direction.Rotation().Yaw;
+	const float DeltaYaw = FMath::FindDeltaAngleDegrees(CurrentYaw, TargetYaw);
+	const float TurnTime = FMath::Max(0.01f, AttackFacingTimeSeconds);
+	const float AngularAccelerationDegrees = 2.0f * (DeltaYaw - VisualYawAngularVelocityDegreesPerSecond * TurnTime) / FMath::Square(TurnTime);
+
+	VisualYawAngularVelocityDegreesPerSecond += AngularAccelerationDegrees * DeltaSeconds;
+	SetVehicleYaw(CurrentYaw + VisualYawAngularVelocityDegreesPerSecond * DeltaSeconds);
+}
+
+float AFlyingPlayerPawn::GetVehicleYaw() const
+{
+	return VehicleMesh ? VehicleMesh->GetComponentRotation().Yaw : GetActorRotation().Yaw;
+}
+
+void AFlyingPlayerPawn::SetVehicleYaw(float NewYaw)
+{
+	if (VehicleMesh)
+	{
+		VehicleMesh->SetWorldRotation(FRotator(0.0f, NewYaw, 0.0f));
+	}
+	else
+	{
+		SetActorRotation(FRotator(0.0f, NewYaw, 0.0f));
+	}
 }
 
 ABaseMonster* AFlyingPlayerPawn::FindClosestAttackTarget() const
@@ -507,4 +651,37 @@ int32 AFlyingPlayerPawn::GetTileDistanceToActor(const AActor* Target) const
 	const int32 DeltaR = PlayerSlot.R - TargetSlot.R;
 	const int32 DeltaS = -DeltaQ - DeltaR;
 	return FMath::Max3(FMath::Abs(DeltaQ), FMath::Abs(DeltaR), FMath::Abs(DeltaS));
+}
+
+const TCHAR* AFlyingPlayerPawn::GetAircraftStateName(EPlayerAircraftState State) const
+{
+	switch (State)
+	{
+	case EPlayerAircraftState::Idle:
+		return TEXT("Idle");
+	case EPlayerAircraftState::Flying:
+		return TEXT("Flying");
+	case EPlayerAircraftState::Attack:
+		return TEXT("Attack");
+	case EPlayerAircraftState::Building:
+		return TEXT("Building");
+	default:
+		return TEXT("Unknown");
+	}
+}
+
+void AFlyingPlayerPawn::LogAircraftDebug(const TCHAR* Format, ...) const
+{
+	if (!bLogAircraftStateDebug)
+	{
+		return;
+	}
+
+	TCHAR MessageBuffer[1024];
+	va_list Args;
+	va_start(Args, Format);
+	FCString::GetVarArgs(MessageBuffer, UE_ARRAY_COUNT(MessageBuffer), Format, Args);
+	va_end(Args);
+
+	UE_LOG(LogSCTDPlayer, Log, TEXT("%s"), MessageBuffer);
 }

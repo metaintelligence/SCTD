@@ -13,6 +13,15 @@ class UStatusComponent;
 class UStatusDisplayComponent;
 class UStaticMeshComponent;
 
+UENUM(BlueprintType)
+enum class EPlayerAircraftState : uint8
+{
+	Idle UMETA(DisplayName = "Idle"),
+	Flying UMETA(DisplayName = "Flying"),
+	Attack UMETA(DisplayName = "Attack"),
+	Building UMETA(DisplayName = "Building")
+};
+
 UCLASS(Blueprintable)
 class SCTD_API AFlyingPlayerPawn : public APawn
 {
@@ -24,6 +33,9 @@ public:
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+
+	UFUNCTION(BlueprintPure, Category = "Flying Player|AI")
+	EPlayerAircraftState GetAircraftState() const { return AircraftState; }
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
@@ -59,6 +71,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flying Player")
 	bool bConstrainToHexGrid = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flying Player|AI", meta = (ClampMin = "0.01", UIMin = "0.01"))
+	float AttackFacingTimeSeconds = 0.2f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flying Player|Debug")
+	bool bLogAircraftStateDebug = true;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flying Player")
 	TObjectPtr<AHexGridManager> HexGridManager;
 
@@ -78,6 +96,9 @@ protected:
 	bool bHasLastTraversableLocation = false;
 	float AttackCooldownRemaining = 0.0f;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Flying Player|AI")
+	EPlayerAircraftState AircraftState = EPlayerAircraftState::Idle;
+
 private:
 	static constexpr float BaseMoveSpeed = 200.0f;
 	static constexpr float BoundaryBounceRestitution = 0.9f;
@@ -85,6 +106,7 @@ private:
 
 	void CacheHexGridManager();
 	FVector GetCameraRelativeInputDirection() const;
+	bool IsMovementInputHeld() const;
 	bool WantsBoost() const;
 	float GetMaxMoveSpeed(bool bBoosting) const;
 	float GetMovementMass() const;
@@ -97,7 +119,18 @@ private:
 	void BounceFromBoundary(const FVector& BoundaryNormal, const FVector& SafeLocation, float MaxSpeed);
 	void ConfigureVisualMeshAttachment();
 	void MaintainFlightAltitude();
+	void UpdateAircraftState(bool bMovementInputHeld);
+	void SetAircraftState(EPlayerAircraftState NewState);
 	void TickAttack(float DeltaSeconds);
+	void UpdateAttackFacing(float DeltaSeconds);
+	void ApplyAngularFacingToward(const FVector& TargetLocation, float DeltaSeconds);
+	float GetVehicleYaw() const;
+	void SetVehicleYaw(float NewYaw);
 	ABaseMonster* FindClosestAttackTarget() const;
 	int32 GetTileDistanceToActor(const AActor* Target) const;
+	const TCHAR* GetAircraftStateName(EPlayerAircraftState State) const;
+	void LogAircraftDebug(const TCHAR* Format, ...) const;
+
+	TWeakObjectPtr<ABaseMonster> CurrentAttackTarget;
+	float VisualYawAngularVelocityDegreesPerSecond = 0.0f;
 };
