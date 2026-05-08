@@ -32,6 +32,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Repository|User")
 	USCTDDeckRepository* GetDeckRepository() const { return DeckRepository; }
 
+	UFUNCTION(BlueprintPure, Category = "Repository|User")
+	int32 GetSelectedTurretDeckIndex() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Repository|User")
+	void SetSelectedTurretDeckIndex(int32 DeckIndex);
+
 	USCTDUserSaveGame* GetSaveGame() const { return SaveGame; }
 
 private:

@@ -1,4 +1,4 @@
-﻿#include "LabTurretFusionWidget.h"
+#include "LabTurretFusionWidget.h"
 
 #include "Model/Repository/SCTDDeckRepository.h"
 #include "Model/Repository/SCTDPartsRepository.h"
@@ -38,6 +38,7 @@ namespace
 void ULabTurretFusionWidget::SetUserRepository(USCTDUserRepository* NewUserRepository)
 {
 	UserRepository = NewUserRepository;
+	SelectedDeckIndex = UserRepository ? UserRepository->GetSelectedTurretDeckIndex() : 0;
 	RefreshOwnedTurretList();
 	RefreshPartsList();
 	RefreshAssemblyPreview();
@@ -384,53 +385,81 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPreparedTurretItem(const FGuid&
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
 						SNew(SBox)
-						.WidthOverride(82.0f)
+						.WidthOverride(116.0f)
 						[
 							SNew(SVerticalBox)
 							+ SVerticalBox::Slot().AutoHeight()
 							[
 								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot().FillWidth(1.0f)
+								+ SHorizontalBox::Slot().AutoWidth()
 								[
-									SNew(SButton)
-									.ContentPadding(FMargin(5.0f, 3.0f))
-									.IsEnabled(TurretIndex > 0)
-									.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleMoveTurretClicked, DeckId, TurretRecord.InstanceId, -1))
+									SNew(SBox)
+									.WidthOverride(54.0f)
 									[
-										SNew(STextBlock).Text(FText::FromString(TEXT("UP"))).Justification(ETextJustify::Center).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+										SNew(SButton)
+										.ContentPadding(FMargin(4.0f, 4.0f))
+										.IsEnabled(TurretIndex > 0)
+										.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleMoveTurretClicked, DeckId, TurretRecord.InstanceId, -1))
+										[
+											SNew(STextBlock)
+											.Text(FText::FromString(TEXT("UP")))
+											.Justification(ETextJustify::Center)
+											.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+										]
 									]
 								]
-								+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(4.0f, 0.0f, 0.0f, 0.0f)
+								+ SHorizontalBox::Slot().AutoWidth().Padding(6.0f, 0.0f, 0.0f, 0.0f)
 								[
-									SNew(SButton)
-									.ContentPadding(FMargin(5.0f, 3.0f))
-									.IsEnabled(TurretIndex < TurretCount - 1)
-									.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleMoveTurretClicked, DeckId, TurretRecord.InstanceId, 1))
+									SNew(SBox)
+									.WidthOverride(54.0f)
 									[
-										SNew(STextBlock).Text(FText::FromString(TEXT("DN"))).Justification(ETextJustify::Center).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+										SNew(SButton)
+										.ContentPadding(FMargin(4.0f, 4.0f))
+										.IsEnabled(TurretIndex < TurretCount - 1)
+										.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleMoveTurretClicked, DeckId, TurretRecord.InstanceId, 1))
+										[
+											SNew(STextBlock)
+											.Text(FText::FromString(TEXT("DN")))
+											.Justification(ETextJustify::Center)
+											.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+										]
 									]
 								]
 							]
 							+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 7.0f, 0.0f, 0.0f)
 							[
 								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot().FillWidth(1.0f)
+								+ SHorizontalBox::Slot().AutoWidth()
 								[
-									SNew(SButton)
-									.ContentPadding(FMargin(5.0f, 3.0f))
-									.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleEditTurretClicked, DeckId, TurretRecord))
+									SNew(SBox)
+									.WidthOverride(54.0f)
 									[
-										SNew(STextBlock).Text(FText::FromString(TEXT("EDIT"))).Justification(ETextJustify::Center).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+										SNew(SButton)
+										.ContentPadding(FMargin(4.0f, 4.0f))
+										.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleEditTurretClicked, DeckId, TurretRecord))
+										[
+											SNew(STextBlock)
+											.Text(FText::FromString(TEXT("EDIT")))
+											.Justification(ETextJustify::Center)
+											.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+										]
 									]
 								]
-								+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(4.0f, 0.0f, 0.0f, 0.0f)
+								+ SHorizontalBox::Slot().AutoWidth().Padding(6.0f, 0.0f, 0.0f, 0.0f)
 								[
-									SNew(SButton)
-									.ContentPadding(FMargin(5.0f, 3.0f))
-									.ButtonColorAndOpacity(FLinearColor(0.55f, 0.06f, 0.06f, 1.0f))
-									.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleDeleteTurretClicked, DeckId, TurretRecord.InstanceId))
+									SNew(SBox)
+									.WidthOverride(54.0f)
 									[
-										SNew(STextBlock).Text(FText::FromString(TEXT("DEL"))).Justification(ETextJustify::Center).Font(FCoreStyle::GetDefaultFontStyle("Bold", 8))
+										SNew(SButton)
+										.ContentPadding(FMargin(4.0f, 4.0f))
+										.ButtonColorAndOpacity(FLinearColor(0.55f, 0.06f, 0.06f, 1.0f))
+										.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleDeleteTurretClicked, DeckId, TurretRecord.InstanceId))
+										[
+											SNew(STextBlock)
+											.Text(FText::FromString(TEXT("DEL")))
+											.Justification(ETextJustify::Center)
+											.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
+										]
 									]
 								]
 							]
@@ -555,6 +584,7 @@ FReply ULabTurretFusionWidget::HandleDeckTabClicked(int32 DeckIndex)
 	GetOrCreateDeckIdByIndex(SelectedDeckIndex);
 	if (UserRepository)
 	{
+		UserRepository->SetSelectedTurretDeckIndex(SelectedDeckIndex);
 		UserRepository->Save();
 	}
 
@@ -718,7 +748,7 @@ FReply ULabTurretFusionWidget::HandleMoveTurretClicked(FGuid DeckId, FGuid Turre
 
 FReply ULabTurretFusionWidget::HandleLobbyClicked()
 {
-	UGameplayStatics::OpenLevel(this, FName(TEXT("Lobby")));
+	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Maps/Lobby")));
 	return FReply::Handled();
 }
 

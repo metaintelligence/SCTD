@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Model/Repository/SCTDRepositoryTypes.h"
 #include "SCTDHUDWidget.generated.h"
 
 class SProgressBar;
@@ -10,6 +11,7 @@ class SBorder;
 class SScrollBox;
 class STextBlock;
 class UStatusComponent;
+class USCTDUserRepository;
 
 UCLASS()
 class SCTD_API USCTDHUDWidget : public UUserWidget
@@ -37,6 +39,10 @@ private:
 	TSharedPtr<SBorder> BuildDragCaptureBorder;
 	TSharedPtr<SScrollBox> BuildScrollBox;
 	TArray<TSharedPtr<SBox>> BuildItemBoxes;
+	TArray<FSCTDPreparedTurretRecord> PreparedTurrets;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USCTDUserRepository> UserRepository;
 
 	FProgressBarStyle HealthBarStyle;
 	FProgressBarStyle BoostBarStyle;
@@ -48,6 +54,7 @@ private:
 	void RefreshObservedPawn();
 	void RefreshValues();
 	void RefreshBuildListLayout();
+	void LoadPreparedTurretsFromSelectedDeck();
 	TSharedRef<SWidget> BuildTurretList();
 	TSharedRef<SWidget> BuildTurretCard(const FString& TurretName, const FString& RoleLabel, const FLinearColor& AccentColor);
 	FReply HandleBuildListMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent);

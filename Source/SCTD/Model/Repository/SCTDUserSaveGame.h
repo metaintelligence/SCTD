@@ -14,6 +14,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Repository|User")
 	int32 SaveVersion = 1;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Decks")
+	int32 SelectedTurretDeckIndex = 0;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Parts")
 	TArray<FSCTDOwnedTurretPartRecord> OwnedParts;
 

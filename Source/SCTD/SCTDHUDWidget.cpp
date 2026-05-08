@@ -4,6 +4,9 @@
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Input/Reply.h"
+#include "Model/Repository/SCTDDeckRepository.h"
+#include "Model/Repository/SCTDPartsRepository.h"
+#include "Model/Repository/SCTDUserRepository.h"
 #include "StatusComponent.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Layout/SBorder.h"
@@ -228,53 +231,79 @@ void USCTDHUDWidget::RefreshBuildListLayout()
 	}
 }
 
+void USCTDHUDWidget::LoadPreparedTurretsFromSelectedDeck()
+{
+	PreparedTurrets.Reset();
+
+	UserRepository = USCTDUserRepository::CreateUserRepository(this);
+	const USCTDDeckRepository* DeckRepository = UserRepository ? UserRepository->GetDeckRepository() : nullptr;
+	if (!DeckRepository)
+	{
+		return;
+	}
+
+	const TArray<FSCTDTurretDeckRecord> Decks = DeckRepository->GetDecks();
+	const int32 SelectedDeckIndex = UserRepository->GetSelectedTurretDeckIndex();
+	if (Decks.IsValidIndex(SelectedDeckIndex))
+	{
+		PreparedTurrets = Decks[SelectedDeckIndex].Turrets;
+	}
+}
+
 TSharedRef<SWidget> USCTDHUDWidget::BuildTurretList()
 {
 	BuildItemBoxes.Reset();
+	LoadPreparedTurretsFromSelectedDeck();
 
 	const FLinearColor PanelColor(0.006f, 0.012f, 0.014f, 0.76f);
 	const FLinearColor FrameColor(0.0f, 0.92f, 0.84f, 0.62f);
+	const FLinearColor AccentColors[] =
+	{
+		FLinearColor(0.0f, 0.92f, 0.84f, 1.0f),
+		FLinearColor(1.0f, 0.50f, 0.18f, 1.0f),
+		FLinearColor(0.28f, 0.72f, 1.0f, 1.0f),
+		FLinearColor(0.95f, 0.92f, 0.36f, 1.0f),
+		FLinearColor(0.42f, 0.55f, 1.0f, 1.0f),
+		FLinearColor(0.66f, 1.0f, 0.30f, 1.0f),
+		FLinearColor(1.0f, 0.30f, 0.62f, 1.0f)
+	};
 
 	TSharedRef<SScrollBox> ScrollBox = SAssignNew(BuildScrollBox, SScrollBox)
 		.Orientation(Orient_Horizontal)
 		.ScrollBarVisibility(EVisibility::Collapsed)
 		.AllowOverscroll(EAllowOverscroll::Yes);
 
-	ScrollBox->AddSlot()
-	.Padding(FMargin(5.0f, 0.0f))
-	[
-		BuildTurretCard(TEXT("SENTRY"), TEXT("BALANCED"), FLinearColor(0.0f, 0.92f, 0.84f, 1.0f))
-	];
-	ScrollBox->AddSlot()
-	.Padding(FMargin(5.0f, 0.0f))
-	[
-		BuildTurretCard(TEXT("EMBER"), TEXT("BURN"), FLinearColor(1.0f, 0.32f, 0.08f, 1.0f))
-	];
-	ScrollBox->AddSlot()
-	.Padding(FMargin(5.0f, 0.0f))
-	[
-		BuildTurretCard(TEXT("FROST"), TEXT("SLOW"), FLinearColor(0.28f, 0.72f, 1.0f, 1.0f))
-	];
-	ScrollBox->AddSlot()
-	.Padding(FMargin(5.0f, 0.0f))
-	[
-		BuildTurretCard(TEXT("RAIL"), TEXT("PIERCE"), FLinearColor(0.95f, 0.92f, 0.36f, 1.0f))
-	];
-	ScrollBox->AddSlot()
-	.Padding(FMargin(5.0f, 0.0f))
-	[
-		BuildTurretCard(TEXT("TESLA"), TEXT("CHAIN"), FLinearColor(0.42f, 0.55f, 1.0f, 1.0f))
-	];
-	ScrollBox->AddSlot()
-	.Padding(FMargin(5.0f, 0.0f))
-	[
-		BuildTurretCard(TEXT("MORTAR"), TEXT("SPLASH"), FLinearColor(0.66f, 1.0f, 0.30f, 1.0f))
-	];
-	ScrollBox->AddSlot()
-	.Padding(FMargin(5.0f, 0.0f))
-	[
-		BuildTurretCard(TEXT("PULSE"), TEXT("BURST"), FLinearColor(1.0f, 0.30f, 0.62f, 1.0f))
-	];
+	if (PreparedTurrets.IsEmpty())
+	{
+		ScrollBox->AddSlot()
+		.Padding(FMargin(5.0f, 0.0f))
+		[
+			BuildTurretCard(TEXT("EMPTY"), TEXT("LAB REQUIRED"), FLinearColor(0.24f, 0.38f, 0.40f, 1.0f))
+		];
+	}
+	else
+	{
+		const USCTDPartsRepository* PartsRepository = UserRepository ? UserRepository->GetPartsRepository() : nullptr;
+		for (int32 TurretIndex = 0; TurretIndex < PreparedTurrets.Num(); ++TurretIndex)
+		{
+			const FSCTDPreparedTurretRecord& TurretRecord = PreparedTurrets[TurretIndex];
+			FString RoleLabel = TEXT("READY");
+			FSCTDOwnedTurretPartRecord WeaponPart;
+			if (PartsRepository && PartsRepository->FindPart(TurretRecord.WeaponPartInstanceId, WeaponPart))
+			{
+				RoleLabel = WeaponPart.DisplayName;
+			}
+
+			ScrollBox->AddSlot()
+			.Padding(FMargin(5.0f, 0.0f))
+			[
+				BuildTurretCard(
+					TurretRecord.DisplayName.IsEmpty() ? FString::Printf(TEXT("TURRET %d"), TurretIndex + 1) : TurretRecord.DisplayName,
+					RoleLabel,
+					AccentColors[TurretIndex % UE_ARRAY_COUNT(AccentColors)])
+			];
+		}
+	}
 
 	return SAssignNew(BuildListBox, SBox)
 		.WidthOverride(640.0f)

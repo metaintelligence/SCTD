@@ -49,6 +49,19 @@ bool USCTDUserRepository::DeleteSave()
 	return bDeleted;
 }
 
+int32 USCTDUserRepository::GetSelectedTurretDeckIndex() const
+{
+	return SaveGame ? FMath::Clamp(SaveGame->SelectedTurretDeckIndex, 0, 2) : 0;
+}
+
+void USCTDUserRepository::SetSelectedTurretDeckIndex(int32 DeckIndex)
+{
+	if (SaveGame)
+	{
+		SaveGame->SelectedTurretDeckIndex = FMath::Clamp(DeckIndex, 0, 2);
+	}
+}
+
 void USCTDUserRepository::EnsureChildRepositories()
 {
 	if (!PartsRepository)
