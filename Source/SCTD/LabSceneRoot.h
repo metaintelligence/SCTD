@@ -23,5 +23,9 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<class ULabTurretFusionWidget> LabWidget;
 
+	UPROPERTY(Transient)
+	TObjectPtr<class USCTDUserRepository> UserRepository;
+
 	void EnsureLabWidget();
+	void SeedMockPartsIfNeeded();
 };
