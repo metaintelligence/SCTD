@@ -4,9 +4,11 @@
 #include "Animation/AnimSequence.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/SphereComponent.h"
+#include "DefenseManager.h"
 #include "Engine/DamageEvents.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "FloatingRewardTextWidget.h"
 #include "HexGridManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
@@ -235,8 +237,25 @@ float ABaseMonster::GetCurrentHealth() const
 float ABaseMonster::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-	ApplyDamageToMonster(AppliedDamage > 0.0f ? AppliedDamage : DamageAmount);
-	return AppliedDamage;
+	const float RequestedDamage = AppliedDamage > 0.0f ? AppliedDamage : DamageAmount;
+	const float PreviousHealth = GetCurrentHealth();
+	ApplyDamageToMonster(RequestedDamage);
+	const float ActualDamage = FMath::Max(0.0f, PreviousHealth - GetCurrentHealth());
+	if (ActualDamage > 0.0f)
+	{
+		if (UWorld* World = GetWorld())
+		{
+			for (TActorIterator<ADefenseManager> It(World); It; ++It)
+			{
+				if (ADefenseManager* DefenseManager = *It)
+				{
+					DefenseManager->RegisterDamageDealt(DamageCauser, ActualDamage);
+					break;
+				}
+			}
+		}
+	}
+	return ActualDamage;
 }
 
 void ABaseMonster::SetTargetMoveTileWorldLocation(const FVector& TargetMoveTileWorldLocation)
@@ -459,6 +478,7 @@ void ABaseMonster::StartDeath()
 		return;
 	}
 
+	GrantScrapReward();
 	SetActionState(EMonsterActionState::Die);
 	PendingAttackTarget.Reset();
 	SideForceContacts.Reset();
@@ -480,6 +500,45 @@ void ABaseMonster::StartDeath()
 	LogMonsterDebug(TEXT("Death started: animation=%.2fs fade=%.2fs"),
 		DeathAnimationDurationSeconds,
 		DeathFadeDurationSeconds);
+}
+
+void ABaseMonster::GrantScrapReward()
+{
+	if (bKillRewardsGranted || (ScrapReward <= 0 && ExpReward <= 0))
+	{
+		return;
+	}
+
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+
+	for (TActorIterator<ADefenseManager> It(World); It; ++It)
+	{
+		if (ADefenseManager* DefenseManager = *It)
+		{
+			if (ScrapReward > 0)
+			{
+				DefenseManager->AddScrap(ScrapReward);
+				if (APlayerController* PlayerController = World->GetFirstPlayerController())
+				{
+					if (UFloatingRewardTextWidget* RewardWidget = CreateWidget<UFloatingRewardTextWidget>(PlayerController, UFloatingRewardTextWidget::StaticClass()))
+					{
+						RewardWidget->InitializeRewardText(GetActorLocation(), ScrapReward);
+						RewardWidget->AddToViewport(130);
+					}
+				}
+			}
+			if (ExpReward > 0)
+			{
+				DefenseManager->AddExperience(ExpReward);
+			}
+			bKillRewardsGranted = true;
+			return;
+		}
+	}
 }
 
 void ABaseMonster::StartDeathFade()

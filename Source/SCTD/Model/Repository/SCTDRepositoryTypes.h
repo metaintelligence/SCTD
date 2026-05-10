@@ -50,6 +50,9 @@ struct FSCTDOwnedTurretPartRecord
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Weapon")
 	float AttackSpeed = 0.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Weapon")
+	float AttackRange = 0.0f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Control")
 	FName AIProfileId = NAME_None;
 };

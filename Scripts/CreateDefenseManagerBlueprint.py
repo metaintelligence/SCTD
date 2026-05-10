@@ -32,7 +32,9 @@ if not generated_class:
     raise RuntimeError(f"Generated Blueprint class not found: {blueprint_asset_path}")
 
 defense_manager_cdo = unreal.get_default_object(generated_class)
-defense_manager_cdo.set_editor_property("DefenseDurationSeconds", 180.0)
+defense_manager_cdo.set_editor_property("DefenseDurationSeconds", 300.0)
+defense_manager_cdo.set_editor_property("InitialScrap", 300)
+defense_manager_cdo.set_editor_property("ScrapPerSecond", 10.0)
 defense_manager_cdo.set_editor_property("MonsterSpawnIntervalSeconds", 5.0)
 defense_manager_cdo.set_editor_property("bStartOnBeginPlay", True)
 

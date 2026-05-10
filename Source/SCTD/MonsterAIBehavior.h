@@ -65,5 +65,7 @@ private:
 
 	AActor* FindAttackTargetInRange(ABaseMonster* Monster) const;
 	bool IsAttackableTarget(const AActor* Candidate) const;
+	bool IsPlayerTarget(const AActor* Candidate) const;
+	bool IsTowerTarget(const AActor* Candidate) const;
 	FVector GetMoveDirectionToTargetTile(const ABaseMonster* Monster) const;
 };

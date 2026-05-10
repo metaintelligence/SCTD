@@ -38,6 +38,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Repository|User")
 	void SetSelectedTurretDeckIndex(int32 DeckIndex);
 
+	UFUNCTION(BlueprintPure, Category = "Repository|Currency")
+	int32 GetScrap() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Repository|Currency")
+	void AddScrap(int32 ScrapAmount);
+
 	USCTDUserSaveGame* GetSaveGame() const { return SaveGame; }
 
 private:

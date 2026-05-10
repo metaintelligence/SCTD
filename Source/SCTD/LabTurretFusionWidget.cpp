@@ -499,7 +499,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPartItem(const FSCTDOwnedTurret
 	}
 	else if (PartRecord.PartType == ESCTDTurretPartType::Weapon)
 	{
-		StatLine = FString::Printf(TEXT("ATK %.0f / SPD %.2f"), PartRecord.AttackDamage, PartRecord.AttackSpeed);
+		StatLine = FString::Printf(TEXT("ATK %.0f / SPD %.2f / RNG %.0f"), PartRecord.AttackDamage, PartRecord.AttackSpeed, PartRecord.AttackRange);
 	}
 	else
 	{
@@ -827,6 +827,7 @@ void ULabTurretFusionWidget::RefreshAssemblyStats()
 	const float Defense = bHasSelectedBasePart ? SelectedBasePart.Defense : 0.0f;
 	const float Attack = bHasSelectedWeaponPart ? SelectedWeaponPart.AttackDamage : 0.0f;
 	const float AttackSpeed = bHasSelectedWeaponPart ? SelectedWeaponPart.AttackSpeed : 0.0f;
+	const float AttackRange = bHasSelectedWeaponPart ? SelectedWeaponPart.AttackRange : 0.0f;
 	const FString Control = bHasSelectedControlPart ? SelectedControlPart.AIProfileId.ToString() : TEXT("None");
 
 	StatsContentBox->ClearChildren();
@@ -840,8 +841,8 @@ void ULabTurretFusionWidget::RefreshAssemblyStats()
 	StatsContentBox->AddSlot().FillHeight(1.0f).VAlign(VAlign_Center)
 	[
 		SNew(STextBlock)
-		.Text(FText::FromString(FString::Printf(TEXT("COST %d    TIME %.1fs\nHP %.0f    DEF %.0f    ATK %.0f    SPD %.2f\nAI %s"),
-			BuildCost, BuildTime, Health, Defense, Attack, AttackSpeed, *Control)))
+		.Text(FText::FromString(FString::Printf(TEXT("COST %d    TIME %.1fs\nHP %.0f    DEF %.0f    ATK %.0f    SPD %.2f    RNG %.0f\nAI %s"),
+			BuildCost, BuildTime, Health, Defense, Attack, AttackSpeed, AttackRange, *Control)))
 		.ColorAndOpacity(FLinearColor(0.70f, 0.86f, 0.94f, 1.0f))
 		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 16))
 		.Justification(ETextJustify::Center)

@@ -50,6 +50,7 @@ FSCTDTurretFinalStats USCTDTurret::GetFinalStats() const
 	{
 		FinalStats.AttackDamage = WeaponPart->AttackDamage;
 		FinalStats.AttackSpeed = WeaponPart->AttackSpeed;
+		FinalStats.AttackRange = WeaponPart->AttackRange;
 	}
 
 	if (ControlPart)

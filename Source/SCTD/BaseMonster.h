@@ -5,6 +5,7 @@
 #include "BaseMonster.generated.h"
 
 class AHexGridManager;
+class ADefenseManager;
 class UMonsterAIBehavior;
 class UMonsterAnimInstance;
 class UAnimSequence;
@@ -49,6 +50,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Monster|Vitals")
 	float GetCurrentHealth() const;
+
+	UFUNCTION(BlueprintPure, Category = "Monster|Reward")
+	int32 GetScrapReward() const { return ScrapReward; }
+
+	UFUNCTION(BlueprintPure, Category = "Monster|Reward")
+	int32 GetExpReward() const { return ExpReward; }
 
 	UFUNCTION(BlueprintCallable, Category = "Monster|Vitals")
 	void ApplyDamageToMonster(float DamageAmount);
@@ -107,6 +114,12 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float AttackPostMotionMilliseconds = 800.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Reward", meta = (ClampMin = "0", UIMin = "0"))
+	int32 ScrapReward = 20;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Reward", meta = (ClampMin = "0", UIMin = "0"))
+	int32 ExpReward = 100;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Physics", meta = (ClampMin = "0.1", UIMin = "0.1"))
 	float MovementMass = 100.0f;
@@ -218,6 +231,7 @@ private:
 	bool bSideForceDecisionPending = false;
 	bool bVisualMovementBlocked = false;
 	bool bDeathFadeStarted = false;
+	bool bKillRewardsGranted = false;
 
 	void CacheHexGridManager();
 	void ConfigurePhysicsBody();
@@ -229,6 +243,7 @@ private:
 	void TickAttackState(float DeltaSeconds);
 	void TickDeathState(float DeltaSeconds);
 	void StartDeath();
+	void GrantScrapReward();
 	void StartDeathFade();
 	void ApplyDeathFadeAlpha(float Alpha);
 	void CreateDeathFadeMaterialInstances();

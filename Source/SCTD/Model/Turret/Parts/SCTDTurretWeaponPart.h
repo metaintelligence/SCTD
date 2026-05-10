@@ -15,4 +15,7 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float AttackSpeed = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float AttackRange = 4.0f;
 };

@@ -62,6 +62,19 @@ void USCTDUserRepository::SetSelectedTurretDeckIndex(int32 DeckIndex)
 	}
 }
 
+int32 USCTDUserRepository::GetScrap() const
+{
+	return SaveGame ? SaveGame->Scrap : 0;
+}
+
+void USCTDUserRepository::AddScrap(int32 ScrapAmount)
+{
+	if (SaveGame && ScrapAmount > 0)
+	{
+		SaveGame->Scrap += ScrapAmount;
+	}
+}
+
 void USCTDUserRepository::EnsureChildRepositories()
 {
 	if (!PartsRepository)

@@ -4,6 +4,7 @@
 #include "GameFramework/PlayerController.h"
 #include "LabTurretFusionWidget.h"
 #include "Model/Repository/SCTDPartsRepository.h"
+#include "Model/Repository/SCTDUserSaveGame.h"
 #include "Model/Repository/SCTDUserRepository.h"
 
 ALabSceneRoot::ALabSceneRoot()
@@ -63,12 +64,93 @@ void ALabSceneRoot::EnsureLabWidget()
 void ALabSceneRoot::SeedMockPartsIfNeeded()
 {
 	USCTDPartsRepository* PartsRepository = UserRepository ? UserRepository->GetPartsRepository() : nullptr;
-	if (!PartsRepository || PartsRepository->GetOwnedPartCount() > 0)
+	if (!PartsRepository)
 	{
 		return;
 	}
 
-	auto AddMockPart = [PartsRepository](ESCTDTurretPartType PartType, const TCHAR* DefinitionId, const TCHAR* DisplayName, int32 Cost, float BuildTime, float Health, float Defense, float Damage, float Speed, const TCHAR* AIProfile)
+	auto NormalizeMockPart = [](FSCTDOwnedTurretPartRecord& PartRecord)
+	{
+		if (PartRecord.DefinitionId == TEXT("mock_base_bulwark"))
+		{
+			PartRecord.BuildTimeSeconds = 6.0f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_base_light"))
+		{
+			PartRecord.BuildTimeSeconds = 3.5f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_base_fortress"))
+		{
+			PartRecord.BuildTimeSeconds = 9.0f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rifle"))
+		{
+			PartRecord.BuildTimeSeconds = 4.5f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rail"))
+		{
+			PartRecord.BuildTimeSeconds = 7.0f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_weapon_flak"))
+		{
+			PartRecord.BuildTimeSeconds = 5.5f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_control_focus"))
+		{
+			PartRecord.BuildTimeSeconds = 3.0f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_control_swarm"))
+		{
+			PartRecord.BuildTimeSeconds = 4.0f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_control_elite"))
+		{
+			PartRecord.BuildTimeSeconds = 5.0f;
+		}
+
+		if (PartRecord.DefinitionId == TEXT("mock_weapon_rifle"))
+		{
+			PartRecord.AttackRange = 4.0f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rail"))
+		{
+			PartRecord.AttackRange = 2.0f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_weapon_flak"))
+		{
+			PartRecord.AttackRange = 6.0f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_control_focus"))
+		{
+			PartRecord.DisplayName = TEXT("Nearest AI");
+			PartRecord.AIProfileId = TEXT("Nearest");
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_control_swarm"))
+		{
+			PartRecord.DisplayName = TEXT("MaxHealth Target AI");
+			PartRecord.AIProfileId = TEXT("MaxHealth");
+		}
+		else if (PartRecord.DefinitionId == TEXT("mock_control_elite"))
+		{
+			PartRecord.DisplayName = TEXT("MinHealth Target AI");
+			PartRecord.AIProfileId = TEXT("MinHealth");
+		}
+	};
+
+	if (PartsRepository->GetOwnedPartCount() > 0)
+	{
+		if (USCTDUserSaveGame* SaveGame = UserRepository ? UserRepository->GetSaveGame() : nullptr)
+		{
+			for (FSCTDOwnedTurretPartRecord& PartRecord : SaveGame->OwnedParts)
+			{
+				NormalizeMockPart(PartRecord);
+			}
+			UserRepository->Save();
+		}
+		return;
+	}
+
+	auto AddMockPart = [PartsRepository, NormalizeMockPart](ESCTDTurretPartType PartType, const TCHAR* DefinitionId, const TCHAR* DisplayName, int32 Cost, float BuildTime, float Health, float Defense, float Damage, float Speed, const TCHAR* AIProfile)
 	{
 		FSCTDOwnedTurretPartRecord PartRecord;
 		PartRecord.DefinitionId = DefinitionId;
@@ -81,6 +163,7 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 		PartRecord.AttackDamage = Damage;
 		PartRecord.AttackSpeed = Speed;
 		PartRecord.AIProfileId = AIProfile;
+		NormalizeMockPart(PartRecord);
 		PartsRepository->AddPart(PartRecord);
 	};
 
@@ -93,9 +176,9 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 	AddMockPart(ESCTDTurretPartType::Weapon, TEXT("mock_weapon_rail"), TEXT("Rail Spike Array"), 170, 14.0f, 0.0f, 0.0f, 48.0f, 0.45f, TEXT(""));
 	AddMockPart(ESCTDTurretPartType::Weapon, TEXT("mock_weapon_flak"), TEXT("Flak Burst Pod"), 145, 11.0f, 0.0f, 0.0f, 28.0f, 0.9f, TEXT(""));
 
-	AddMockPart(ESCTDTurretPartType::Control, TEXT("mock_control_focus"), TEXT("Focus Target AI"), 90, 6.0f, 0.0f, 0.0f, 0.0f, 0.0f, TEXT("FocusNearest"));
-	AddMockPart(ESCTDTurretPartType::Control, TEXT("mock_control_swarm"), TEXT("Swarm Control AI"), 115, 8.0f, 0.0f, 0.0f, 0.0f, 0.0f, TEXT("MultiTarget"));
-	AddMockPart(ESCTDTurretPartType::Control, TEXT("mock_control_elite"), TEXT("Elite Hunter AI"), 150, 10.0f, 0.0f, 0.0f, 0.0f, 0.0f, TEXT("StrongestTarget"));
+	AddMockPart(ESCTDTurretPartType::Control, TEXT("mock_control_focus"), TEXT("Nearest AI"), 90, 6.0f, 0.0f, 0.0f, 0.0f, 0.0f, TEXT("Nearest"));
+	AddMockPart(ESCTDTurretPartType::Control, TEXT("mock_control_swarm"), TEXT("MaxHealth Target AI"), 115, 8.0f, 0.0f, 0.0f, 0.0f, 0.0f, TEXT("MaxHealth"));
+	AddMockPart(ESCTDTurretPartType::Control, TEXT("mock_control_elite"), TEXT("MinHealth Target AI"), 150, 10.0f, 0.0f, 0.0f, 0.0f, 0.0f, TEXT("MinHealth"));
 
 	UserRepository->Save();
 }

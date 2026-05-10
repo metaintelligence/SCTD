@@ -32,6 +32,9 @@ struct FSCTDTurretFinalStats
 	float AttackSpeed = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
+	float AttackRange = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
 	FName AIProfileId = NAME_None;
 };
 
