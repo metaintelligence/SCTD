@@ -7,7 +7,7 @@
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
-#include "Widgets/Text/STextBlock.h"
+#include "SCTDMarqueeText.h"
 
 TSharedRef<SWidget> ULobbyWidget::RebuildWidget()
 {
@@ -27,7 +27,7 @@ TSharedRef<SWidget> ULobbyWidget::RebuildWidget()
 			+ SVerticalBox::Slot()
 			.AutoHeight()
 			[
-				SNew(STextBlock)
+				SNew(SSCTDMarqueeText)
 				.Text(FText::FromString(TEXT("SCTD COMMAND LOBBY")))
 				.ColorAndOpacity(FLinearColor(0.86f, 0.92f, 0.90f, 1.0f))
 				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 24))
@@ -97,7 +97,7 @@ TSharedRef<SWidget> ULobbyWidget::BuildModeCard(const FString& Title, const FStr
 					.FillHeight(1.0f)
 					.VAlign(VAlign_Center)
 					[
-						SNew(STextBlock)
+						SNew(SSCTDMarqueeText)
 						.Text(FText::FromString(Title))
 						.ColorAndOpacity(AccentColor)
 						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 20))
@@ -106,7 +106,7 @@ TSharedRef<SWidget> ULobbyWidget::BuildModeCard(const FString& Title, const FStr
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					[
-						SNew(STextBlock)
+						SNew(SSCTDMarqueeText)
 						.Text(FText::FromString(Subtitle))
 						.ColorAndOpacity(FLinearColor(0.72f, 0.76f, 0.78f, 1.0f))
 						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 12))
@@ -135,7 +135,7 @@ TSharedRef<SWidget> ULobbyWidget::BuildPlayerStatusPanel()
 				+ SVerticalBox::Slot()
 				.AutoHeight()
 				[
-					SNew(STextBlock)
+					SNew(SSCTDMarqueeText)
 					.Text(FText::FromString(TEXT("PLAYER STATUS")))
 					.ColorAndOpacity(FLinearColor(0.54f, 0.60f, 1.0f, 1.0f))
 					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
@@ -144,7 +144,7 @@ TSharedRef<SWidget> ULobbyWidget::BuildPlayerStatusPanel()
 				.FillHeight(1.0f)
 				.VAlign(VAlign_Center)
 				[
-					SNew(STextBlock)
+					SNew(SSCTDMarqueeText)
 					.Text(FText::FromString(TEXT("Player data model is not planned yet.")))
 					.ColorAndOpacity(FLinearColor(0.40f, 0.44f, 0.50f, 1.0f))
 					.Font(FCoreStyle::GetDefaultFontStyle("Regular", 12))

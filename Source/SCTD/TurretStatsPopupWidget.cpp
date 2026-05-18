@@ -4,7 +4,7 @@
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
-#include "Widgets/Text/STextBlock.h"
+#include "SCTDMarqueeText.h"
 
 void UTurretStatsPopupWidget::SetStats(const FSCTDTurretPopupStats& NewStats)
 {
@@ -33,7 +33,7 @@ TSharedRef<SWidget> UTurretStatsPopupWidget::RebuildWidget()
 					+ SVerticalBox::Slot()
 					.AutoHeight()
 					[
-						SNew(STextBlock)
+						SNew(SSCTDMarqueeText)
 						.Text(FText::FromString(Stats.DisplayName.IsEmpty() ? TEXT("TURRET") : Stats.DisplayName))
 						.ColorAndOpacity(FLinearColor(0.78f, 1.0f, 0.94f, 1.0f))
 						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 16))
@@ -85,7 +85,7 @@ TSharedRef<SWidget> UTurretStatsPopupWidget::BuildStatRow(const FString& Label, 
 		+ SHorizontalBox::Slot()
 		.AutoWidth()
 		[
-			SNew(STextBlock)
+			SNew(SSCTDMarqueeText)
 			.Text(FText::FromString(Label))
 			.ColorAndOpacity(FLinearColor(0.38f, 0.78f, 0.78f, 1.0f))
 			.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
@@ -94,7 +94,7 @@ TSharedRef<SWidget> UTurretStatsPopupWidget::BuildStatRow(const FString& Label, 
 		.FillWidth(1.0f)
 		.Padding(10.0f, 0.0f, 0.0f, 0.0f)
 		[
-			SNew(STextBlock)
+			SNew(SSCTDMarqueeText)
 			.Text(FText::FromString(Value.IsEmpty() ? TEXT("-") : Value))
 			.ColorAndOpacity(FLinearColor(0.78f, 1.0f, 0.94f, 1.0f))
 			.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))

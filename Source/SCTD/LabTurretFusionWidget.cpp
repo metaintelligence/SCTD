@@ -12,7 +12,7 @@
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SOverlay.h"
-#include "Widgets/Text/STextBlock.h"
+#include "SCTDMarqueeText.h"
 
 namespace
 {
@@ -113,7 +113,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildHeader()
 			.FillWidth(1.0f)
 			.VAlign(VAlign_Center)
 			[
-				SNew(STextBlock)
+				SNew(SSCTDMarqueeText)
 				.Text(FText::FromString(TEXT("LAB / TURRET FUSION")))
 				.ColorAndOpacity(FLinearColor(0.78f, 0.92f, 0.86f, 1.0f))
 				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 16))
@@ -127,7 +127,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildHeader()
 				.ButtonColorAndOpacity(FLinearColor(0.05f, 0.16f, 0.13f, 1.0f))
 				.OnClicked(BIND_UOBJECT_DELEGATE(FOnClicked, HandleLobbyClicked))
 				[
-					SNew(STextBlock)
+					SNew(SSCTDMarqueeText)
 					.Text(FText::FromString(TEXT("TO LOBBY")))
 					.ColorAndOpacity(FLinearColor(0.82f, 1.0f, 0.92f, 1.0f))
 					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
@@ -155,7 +155,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildOwnedTurretList()
 				+ SVerticalBox::Slot()
 				.AutoHeight()
 				[
-					SNew(STextBlock)
+					SNew(SSCTDMarqueeText)
 					.Text(FText::FromString(TEXT("OWNED TURRETS")))
 					.ColorAndOpacity(FLinearColor(1.0f, 0.34f, 0.34f, 1.0f))
 					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
@@ -213,7 +213,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildDeckTab(int32 DeckIndex)
 		.ContentPadding(FMargin(8.0f, 9.0f))
 		.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleDeckTabClicked, DeckIndex))
 		[
-			SNew(STextBlock)
+			SNew(SSCTDMarqueeText)
 			.Text(FText::FromString(FString::Printf(TEXT("%d"), DeckIndex + 1)))
 			.ColorAndOpacity(FLinearColor(1.0f, 0.80f, 0.80f, 1.0f))
 			.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
@@ -320,7 +320,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPlusTurretItem()
 						SNew(SVerticalBox)
 						+ SVerticalBox::Slot().FillHeight(1.0f).VAlign(VAlign_Center)
 						[
-							SNew(STextBlock)
+							SNew(SSCTDMarqueeText)
 							.Text(FText::FromString(TEXT("+")))
 							.ColorAndOpacity(bCanAdd ? FLinearColor(1.0f, 0.34f, 0.34f, 1.0f) : FLinearColor(0.34f, 0.34f, 0.36f, 1.0f))
 							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 42))
@@ -328,7 +328,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPlusTurretItem()
 						]
 						+ SVerticalBox::Slot().AutoHeight()
 						[
-							SNew(STextBlock)
+							SNew(SSCTDMarqueeText)
 							.Text(FText::FromString(bCanAdd ? TEXT("NEW TURRET") : TEXT("DECK FULL")))
 							.ColorAndOpacity(bCanAdd ? FLinearColor(0.72f, 0.38f, 0.38f, 1.0f) : FLinearColor(0.38f, 0.38f, 0.40f, 1.0f))
 							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
@@ -359,7 +359,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPreparedTurretItem(const FGuid&
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.0f, 0.0f, 10.0f, 0.0f)
 					[
-						SNew(STextBlock)
+						SNew(SSCTDMarqueeText)
 						.Text(FText::FromString(FString::Printf(TEXT("%d"), TurretIndex + 1)))
 						.ColorAndOpacity(FLinearColor(1.0f, 0.38f, 0.38f, 1.0f))
 						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 20))
@@ -369,14 +369,14 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPreparedTurretItem(const FGuid&
 						SNew(SVerticalBox)
 						+ SVerticalBox::Slot().AutoHeight()
 						[
-							SNew(STextBlock)
+							SNew(SSCTDMarqueeText)
 							.Text(FText::FromString(TurretRecord.DisplayName))
 							.ColorAndOpacity(FLinearColor(1.0f, 0.62f, 0.62f, 1.0f))
 							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 13))
 						]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 0.0f)
 						[
-							SNew(STextBlock)
+							SNew(SSCTDMarqueeText)
 							.Text(FText::FromString(TEXT("REGISTERED BUILD")))
 							.ColorAndOpacity(FLinearColor(0.72f, 0.38f, 0.38f, 1.0f))
 							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
@@ -401,7 +401,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPreparedTurretItem(const FGuid&
 										.IsEnabled(TurretIndex > 0)
 										.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleMoveTurretClicked, DeckId, TurretRecord.InstanceId, -1))
 										[
-											SNew(STextBlock)
+											SNew(SSCTDMarqueeText)
 											.Text(FText::FromString(TEXT("UP")))
 											.Justification(ETextJustify::Center)
 											.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
@@ -418,7 +418,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPreparedTurretItem(const FGuid&
 										.IsEnabled(TurretIndex < TurretCount - 1)
 										.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleMoveTurretClicked, DeckId, TurretRecord.InstanceId, 1))
 										[
-											SNew(STextBlock)
+											SNew(SSCTDMarqueeText)
 											.Text(FText::FromString(TEXT("DN")))
 											.Justification(ETextJustify::Center)
 											.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
@@ -438,7 +438,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPreparedTurretItem(const FGuid&
 										.ContentPadding(FMargin(4.0f, 4.0f))
 										.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleEditTurretClicked, DeckId, TurretRecord))
 										[
-											SNew(STextBlock)
+											SNew(SSCTDMarqueeText)
 											.Text(FText::FromString(TEXT("EDIT")))
 											.Justification(ETextJustify::Center)
 											.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
@@ -455,7 +455,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPreparedTurretItem(const FGuid&
 										.ButtonColorAndOpacity(FLinearColor(0.55f, 0.06f, 0.06f, 1.0f))
 										.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandleDeleteTurretClicked, DeckId, TurretRecord.InstanceId))
 										[
-											SNew(STextBlock)
+											SNew(SSCTDMarqueeText)
 											.Text(FText::FromString(TEXT("DEL")))
 											.Justification(ETextJustify::Center)
 											.Font(FCoreStyle::GetDefaultFontStyle("Bold", 9))
@@ -481,7 +481,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPartTab(const FString& Label, E
 		.ContentPadding(FMargin(8.0f, 10.0f))
 		.OnClicked(FOnClicked::CreateUObject(this, &ULabTurretFusionWidget::HandlePartTabClicked, PartType))
 		[
-			SNew(STextBlock)
+			SNew(SSCTDMarqueeText)
 			.Text(FText::FromString(Label))
 			.ColorAndOpacity(FLinearColor(0.92f, 0.82f, 0.96f, 1.0f))
 			.Font(FCoreStyle::GetDefaultFontStyle("Bold", 10))
@@ -523,21 +523,21 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPartItem(const FSCTDOwnedTurret
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot().AutoHeight()
 					[
-						SNew(STextBlock)
+						SNew(SSCTDMarqueeText)
 						.Text(FText::FromString(PartRecord.DisplayName))
 						.ColorAndOpacity(FLinearColor(0.92f, 0.82f, 0.96f, 1.0f))
 						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 6.0f, 0.0f, 0.0f)
 					[
-						SNew(STextBlock)
+						SNew(SSCTDMarqueeText)
 						.Text(FText::FromString(StatLine))
 						.ColorAndOpacity(AccentColor)
 						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 0.0f)
 					[
-						SNew(STextBlock)
+						SNew(SSCTDMarqueeText)
 						.Text(FText::FromString(FString::Printf(TEXT("COST %d / TIME %.1fs"), PartRecord.BuildCost, PartRecord.BuildTimeSeconds)))
 						.ColorAndOpacity(FLinearColor(0.58f, 0.52f, 0.62f, 1.0f))
 						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
@@ -559,7 +559,7 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildEmptyPanel(const FString& Label
 			.BorderBackgroundColor(FLinearColor(0.008f, 0.010f, 0.012f, 0.94f))
 			.Padding(FMargin(18.0f))
 			[
-				SNew(STextBlock)
+				SNew(SSCTDMarqueeText)
 				.Text(FText::FromString(Description))
 				.ColorAndOpacity(AccentColor)
 				.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
@@ -762,14 +762,14 @@ void ULabTurretFusionWidget::RefreshAssemblyPreview()
 	PreviewContentBox->ClearChildren();
 	PreviewContentBox->AddSlot().AutoHeight()
 	[
-		SNew(STextBlock)
+		SNew(SSCTDMarqueeText)
 		.Text(FText::FromString(bIsEditingTurret ? TEXT("EDIT TURRET ASSEMBLY") : (bIsViewingTurret ? TEXT("VIEW TURRET BUILD") : TEXT("TURRET BUILD PREVIEW"))))
 		.ColorAndOpacity(FLinearColor(0.00f, 0.76f, 0.25f, 1.0f))
 		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
 	];
 	PreviewContentBox->AddSlot().FillHeight(1.0f).VAlign(VAlign_Center)
 	[
-		SNew(STextBlock)
+		SNew(SSCTDMarqueeText)
 		.Text(FText::FromString(FString::Printf(TEXT("BODY    %s\nWEAPON  %s\nCONTROL %s"),
 			*PartLabel(bHasSelectedBasePart, SelectedBasePart, TEXT("body")),
 			*PartLabel(bHasSelectedWeaponPart, SelectedWeaponPart, TEXT("weapon")),
@@ -797,7 +797,7 @@ void ULabTurretFusionWidget::RefreshAssemblyPreview()
 				.ContentPadding(FMargin(18.0f, 7.0f))
 				.OnClicked(BIND_UOBJECT_DELEGATE(FOnClicked, HandleRegisterTurretClicked))
 				[
-					SNew(STextBlock)
+					SNew(SSCTDMarqueeText)
 					.Text(FText::FromString(bIsEditingTurret ? TEXT("SAVE") : TEXT("REGISTER")))
 					.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
 				]
@@ -833,14 +833,14 @@ void ULabTurretFusionWidget::RefreshAssemblyStats()
 	StatsContentBox->ClearChildren();
 	StatsContentBox->AddSlot().AutoHeight()
 	[
-		SNew(STextBlock)
+		SNew(SSCTDMarqueeText)
 		.Text(FText::FromString(TEXT("TURRET STATS")))
 		.ColorAndOpacity(FLinearColor(0.00f, 0.58f, 0.82f, 1.0f))
 		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
 	];
 	StatsContentBox->AddSlot().FillHeight(1.0f).VAlign(VAlign_Center)
 	[
-		SNew(STextBlock)
+		SNew(SSCTDMarqueeText)
 		.Text(FText::FromString(FString::Printf(TEXT("COST %d    TIME %.1fs\nHP %.0f    DEF %.0f    ATK %.0f    SPD %.2f    RNG %.0f\nAI %s"),
 			BuildCost, BuildTime, Health, Defense, Attack, AttackSpeed, AttackRange, *Control)))
 		.ColorAndOpacity(FLinearColor(0.70f, 0.86f, 0.94f, 1.0f))

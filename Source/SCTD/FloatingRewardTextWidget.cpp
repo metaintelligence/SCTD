@@ -2,7 +2,7 @@
 
 #include "GameFramework/PlayerController.h"
 #include "Styling/CoreStyle.h"
-#include "Widgets/Text/STextBlock.h"
+#include "SCTDMarqueeText.h"
 
 void UFloatingRewardTextWidget::InitializeRewardText(const FVector& InWorldLocation, int32 InScrapAmount)
 {
@@ -13,7 +13,7 @@ void UFloatingRewardTextWidget::InitializeRewardText(const FVector& InWorldLocat
 
 TSharedRef<SWidget> UFloatingRewardTextWidget::RebuildWidget()
 {
-	return SAssignNew(RewardTextBlock, STextBlock)
+	return SAssignNew(RewardTextBlock, SSCTDMarqueeText)
 		.Text(FText::FromString(FString::Printf(TEXT("+%d"), ScrapAmount)))
 		.ColorAndOpacity(FLinearColor(1.0f, 0.82f, 0.28f, 0.0f))
 		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 22))

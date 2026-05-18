@@ -4,7 +4,7 @@
 #include "Blueprint/UserWidget.h"
 #include "FloatingRewardTextWidget.generated.h"
 
-class STextBlock;
+class SSCTDMarqueeText;
 
 UCLASS()
 class SCTD_API UFloatingRewardTextWidget : public UUserWidget
@@ -24,5 +24,5 @@ private:
 	float ElapsedSeconds = 0.0f;
 	float DurationSeconds = 1.0f;
 
-	TSharedPtr<STextBlock> RewardTextBlock;
+	TSharedPtr<SSCTDMarqueeText> RewardTextBlock;
 };
