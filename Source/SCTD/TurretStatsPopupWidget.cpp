@@ -60,7 +60,11 @@ TSharedRef<SWidget> UTurretStatsPopupWidget::RebuildWidget()
 					]
 					+ SVerticalBox::Slot().AutoHeight()
 					[
-						BuildStatRow(TEXT("ATK"), FString::Printf(TEXT("%.0f"), Stats.AttackDamage))
+						BuildStatRow(TEXT("ATK"), FString::Printf(TEXT("%.0f-%.0f"), Stats.MinAttackDamage, Stats.MaxAttackDamage))
+					]
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						BuildStatRow(TEXT("TYPE"), BuildAttackAttributeText())
 					]
 					+ SVerticalBox::Slot().AutoHeight()
 					[
@@ -112,4 +116,21 @@ FString UTurretStatsPopupWidget::BuildAIText() const
 		return TEXT("Min health target");
 	}
 	return TEXT("Nearest target");
+}
+
+FString UTurretStatsPopupWidget::BuildAttackAttributeText() const
+{
+	switch (Stats.AttackAttribute)
+	{
+	case ESCTDAttackAttribute::Physical:
+		return TEXT("Physical");
+	case ESCTDAttackAttribute::Fire:
+		return TEXT("Fire");
+	case ESCTDAttackAttribute::Lightning:
+		return TEXT("Lightning");
+	case ESCTDAttackAttribute::Frost:
+		return TEXT("Frost");
+	default:
+		return TEXT("-");
+	}
 }

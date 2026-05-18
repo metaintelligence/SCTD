@@ -2,6 +2,7 @@
 
 #include "Kismet/GameplayStatics.h"
 #include "SCTDDeckRepository.h"
+#include "SCTDPartDefinitionRepository.h"
 #include "SCTDPartsRepository.h"
 #include "SCTDUserSaveGame.h"
 
@@ -88,4 +89,9 @@ void USCTDUserRepository::EnsureChildRepositories()
 		DeckRepository = NewObject<USCTDDeckRepository>(this);
 	}
 	DeckRepository->Initialize(this);
+
+	if (!PartDefinitionRepository)
+	{
+		PartDefinitionRepository = NewObject<USCTDPartDefinitionRepository>(this);
+	}
 }

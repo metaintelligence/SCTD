@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "../../Combat/SCTDAttackTypes.h"
 #include "SCTDTurretPart.h"
 #include "SCTDTurretWeaponPart.generated.h"
 
@@ -11,11 +12,20 @@ class SCTD_API USCTDTurretWeaponPart : public USCTDTurretPart
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", UIMin = "0.0"))
-	float AttackDamage = 10.0f;
+	float MinAttackDamage = 10.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float MaxAttackDamage = 10.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float AttackSpeed = 1.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float AttackRange = 4.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon")
+	ESCTDAttackAttribute AttackAttribute = ESCTDAttackAttribute::Physical;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon")
+	TArray<FSCTDStatusEffectChance> StatusEffectChances;
 };

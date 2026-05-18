@@ -6,6 +6,7 @@
 #include "Engine/DamageEvents.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "FloatingDamageTextLibrary.h"
 #include "GameFramework/PlayerController.h"
 #include "HexGridManager.h"
 #include "InputCoreTypes.h"
@@ -166,10 +167,13 @@ void AFlyingPlayerPawn::Tick(float DeltaSeconds)
 float AFlyingPlayerPawn::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	const float AppliedDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	const float PreviousHealth = StatusComponent ? StatusComponent->GetCurrentHealth() : 0.0f;
 	if (StatusComponent)
 	{
 		StatusComponent->ApplyDamage(AppliedDamage > 0.0f ? AppliedDamage : DamageAmount);
 	}
+	const float ActualDamage = StatusComponent ? FMath::Max(0.0f, PreviousHealth - StatusComponent->GetCurrentHealth()) : FMath::Max(0.0f, AppliedDamage);
+	SCTDFloatingDamageText::Spawn(this, ActualDamage, 132.0f);
 	if (UWorld* World = GetWorld())
 	{
 		for (TActorIterator<ATopDownEdgeScrollCamera> It(World); It; ++It)
@@ -182,7 +186,7 @@ float AFlyingPlayerPawn::TakeDamage(float DamageAmount, FDamageEvent const& Dama
 		DamageAmount,
 		AppliedDamage,
 		StatusComponent ? StatusComponent->GetCurrentHealth() : -1.0f);
-	return AppliedDamage;
+	return ActualDamage;
 }
 
 void AFlyingPlayerPawn::CacheHexGridManager()
@@ -532,18 +536,22 @@ void AFlyingPlayerPawn::TickAttack(float DeltaSeconds)
 
 	UpdateAttackFacing(DeltaSeconds);
 
-	if (AttackCooldownRemaining > 0.0f || !PlayerModel || PlayerModel->AttackSpeed <= 0.0f || PlayerModel->AttackDamage <= 0.0f)
+	const float MaxAttackDamage = PlayerModel ? FMath::Max(PlayerModel->MinAttackDamage, PlayerModel->MaxAttackDamage) : 0.0f;
+	if (AttackCooldownRemaining > 0.0f || !PlayerModel || PlayerModel->AttackSpeed <= 0.0f || MaxAttackDamage <= 0.0f)
 	{
 		return;
 	}
 
 	FDamageEvent DamageEvent;
-	const float AppliedDamage = TargetMonster->TakeDamage(PlayerModel->AttackDamage, DamageEvent, GetController(), this);
+	const float SafeMinDamage = FMath::Max(0.0f, FMath::Min(PlayerModel->MinAttackDamage, PlayerModel->MaxAttackDamage));
+	const float SafeMaxDamage = FMath::Max(0.0f, FMath::Max(PlayerModel->MinAttackDamage, PlayerModel->MaxAttackDamage));
+	const float RolledDamage = SafeMaxDamage > 0.0f ? FMath::FRandRange(SafeMinDamage, SafeMaxDamage) : 0.0f;
+	const float AppliedDamage = TargetMonster->TakeDamage(RolledDamage, DamageEvent, GetController(), this);
 	AttackCooldownRemaining = 1.0f / FMath::Max(0.01f, PlayerModel->AttackSpeed);
 	UE_LOG(LogSCTDPlayer, Log, TEXT("%s attacked %s: requested=%.2f applied=%.2f range=%.2f"),
 		*GetNameSafe(this),
 		*GetNameSafe(TargetMonster),
-		PlayerModel->AttackDamage,
+		RolledDamage,
 		AppliedDamage,
 		PlayerModel->AttackRange);
 }

@@ -6,6 +6,7 @@
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Engine/DamageEvents.h"
 #include "EngineUtils.h"
+#include "FloatingDamageTextLibrary.h"
 #include "GameFramework/PlayerController.h"
 #include "HexGridManager.h"
 #include "InputCoreTypes.h"
@@ -66,7 +67,7 @@ void ASCTDDefenseTurret::Tick(float DeltaSeconds)
 	AttackCooldownRemaining = FMath::Max(0.0f, AttackCooldownRemaining - DeltaSeconds);
 	UpdateDynamicDialogState();
 	UpdateStatsPopupLocation();
-	if (AttackCooldownRemaining > 0.0f || AttackDamage <= 0.0f || AttackSpeed <= 0.0f)
+	if (AttackCooldownRemaining > 0.0f || FMath::Max(MinAttackDamage, MaxAttackDamage) <= 0.0f || AttackSpeed <= 0.0f)
 	{
 		return;
 	}
@@ -78,13 +79,16 @@ void ASCTDDefenseTurret::Tick(float DeltaSeconds)
 	}
 
 	FDamageEvent DamageEvent;
-	Target->TakeDamage(AttackDamage, DamageEvent, nullptr, this);
+	const float RolledDamage = RollAttackDamage();
+	Target->TakeDamage(RolledDamage, DamageEvent, nullptr, this);
+	RollStatusEffectsForTarget(Target);
 	AttackCooldownRemaining = 1.0f / FMath::Max(0.01f, AttackSpeed);
-	UE_LOG(LogSCTDDefenseTurret, VeryVerbose, TEXT("%s attacked %s damage=%.1f range=%.1f ai=%s"),
+	UE_LOG(LogSCTDDefenseTurret, VeryVerbose, TEXT("%s attacked %s damage=%.1f range=%.1f attribute=%d ai=%s"),
 		*GetNameSafe(this),
 		*GetNameSafe(Target),
-		AttackDamage,
+		RolledDamage,
 		AttackRangeTiles,
+		static_cast<int32>(AttackAttribute),
 		*AIProfileId.ToString());
 }
 
@@ -96,9 +100,12 @@ void ASCTDDefenseTurret::InitializeFromRecords(const FSCTDPreparedTurretRecord& 
 	ControlPartName = ControlPart.DisplayName;
 	MaxHealth = BasePart.BaseHealth;
 	Defense = BasePart.Defense;
-	AttackDamage = WeaponPart.AttackDamage;
+	MinAttackDamage = WeaponPart.MinAttackDamage;
+	MaxAttackDamage = WeaponPart.MaxAttackDamage;
 	AttackSpeed = WeaponPart.AttackSpeed;
 	AttackRangeTiles = WeaponPart.AttackRange;
+	AttackAttribute = WeaponPart.AttackAttribute;
+	StatusEffectChances = WeaponPart.StatusEffectChances;
 	AIProfileId = ControlPart.AIProfileId;
 	CurrentHealth = MaxHealth;
 }
@@ -113,6 +120,7 @@ float ASCTDDefenseTurret::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 	const float DefenseMultiplier = 100.0f / (100.0f + FMath::Max(0.0f, Defense));
 	const float AppliedDamage = DamageAmount * DefenseMultiplier;
 	CurrentHealth = FMath::Max(0.0f, CurrentHealth - AppliedDamage);
+	SCTDFloatingDamageText::Spawn(this, AppliedDamage, 154.0f);
 	if (CurrentHealth <= 0.0f)
 	{
 		HideStatsPopup();
@@ -337,9 +345,12 @@ void ASCTDDefenseTurret::ShowStatsPopup()
 		PopupStats.DisplayName = DisplayName;
 		PopupStats.MaxHealth = MaxHealth;
 		PopupStats.Defense = Defense;
-		PopupStats.AttackDamage = AttackDamage;
+		PopupStats.MinAttackDamage = MinAttackDamage;
+		PopupStats.MaxAttackDamage = MaxAttackDamage;
 		PopupStats.AttackSpeed = AttackSpeed;
 		PopupStats.AttackRangeTiles = AttackRangeTiles;
+		PopupStats.AttackAttribute = AttackAttribute;
+		PopupStats.StatusEffectChances = StatusEffectChances;
 		PopupStats.AIProfileId = AIProfileId;
 		PopupStats.BasePartName = BasePartName;
 		PopupStats.WeaponPartName = WeaponPartName;
@@ -362,6 +373,43 @@ void ASCTDDefenseTurret::HideStatsPopup()
 	{
 		StatsPopupWidget->RemoveFromParent();
 		StatsPopupWidget = nullptr;
+	}
+}
+
+float ASCTDDefenseTurret::RollAttackDamage() const
+{
+	const float SafeMinDamage = FMath::Max(0.0f, FMath::Min(MinAttackDamage, MaxAttackDamage));
+	const float SafeMaxDamage = FMath::Max(0.0f, FMath::Max(MinAttackDamage, MaxAttackDamage));
+	if (SafeMaxDamage <= 0.0f)
+	{
+		return 0.0f;
+	}
+	return FMath::FRandRange(SafeMinDamage, SafeMaxDamage);
+}
+
+void ASCTDDefenseTurret::RollStatusEffectsForTarget(ABaseMonster* Target) const
+{
+	if (!Target)
+	{
+		return;
+	}
+
+	for (const FSCTDStatusEffectChance& StatusEffectChance : StatusEffectChances)
+	{
+		if (StatusEffectChance.EffectType == ESCTDStatusEffectType::None)
+		{
+			continue;
+		}
+
+		const float FinalChance = StatusEffectChance.GetFinalChance();
+		if (FinalChance > 0.0f && FMath::FRand() <= FinalChance)
+		{
+			UE_LOG(LogSCTDDefenseTurret, VeryVerbose, TEXT("%s rolled status effect %d on %s chance=%.3f"),
+				*GetNameSafe(this),
+				static_cast<int32>(StatusEffectChance.EffectType),
+				*GetNameSafe(Target),
+				FinalChance);
+		}
 	}
 }
 

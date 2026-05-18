@@ -1,5 +1,6 @@
 #include "SCTDPartsRepository.h"
 
+#include "SCTDPartDefinitionRepository.h"
 #include "SCTDUserRepository.h"
 #include "SCTDUserSaveGame.h"
 
@@ -23,6 +24,40 @@ FGuid USCTDPartsRepository::AddPart(const FSCTDOwnedTurretPartRecord& PartRecord
 	}
 
 	SaveGame->OwnedParts.Add(NewRecord);
+	return NewRecord.InstanceId;
+}
+
+FGuid USCTDPartsRepository::AddPartByDefinitionId(FName DefinitionId, int32 RandomOptionCount, bool bSaveImmediately)
+{
+	USCTDUserSaveGame* SaveGame = UserRepository ? UserRepository->GetSaveGame() : nullptr;
+	USCTDPartDefinitionRepository* DefinitionRepository = UserRepository ? UserRepository->GetPartDefinitionRepository() : nullptr;
+	if (!SaveGame || !DefinitionRepository || DefinitionId.IsNone())
+	{
+		return FGuid();
+	}
+
+	FSCTDTurretPartDefinitionRow Definition;
+	if (!DefinitionRepository->FindPartDefinition(DefinitionId, Definition))
+	{
+		return FGuid();
+	}
+
+	const TArray<FSCTDRolledTurretPartOption> RolledOptions = DefinitionRepository->RollOptions(
+		Definition.OptionPoolId,
+		Definition.PartType,
+		RandomOptionCount);
+
+	FSCTDOwnedTurretPartRecord NewRecord;
+	if (!DefinitionRepository->BuildOwnedPartFromDefinition(DefinitionId, RolledOptions, NewRecord))
+	{
+		return FGuid();
+	}
+
+	SaveGame->OwnedParts.Add(NewRecord);
+	if (bSaveImmediately && UserRepository)
+	{
+		UserRepository->Save();
+	}
 	return NewRecord.InstanceId;
 }
 
@@ -63,22 +98,47 @@ bool USCTDPartsRepository::FindPart(const FGuid& PartInstanceId, FSCTDOwnedTurre
 	return false;
 }
 
+bool USCTDPartsRepository::FindResolvedPart(const FGuid& PartInstanceId, FSCTDOwnedTurretPartRecord& OutPartRecord) const
+{
+	FSCTDOwnedTurretPartRecord FoundRecord;
+	if (!FindPart(PartInstanceId, FoundRecord))
+	{
+		return false;
+	}
+
+	const USCTDPartDefinitionRepository* DefinitionRepository = UserRepository ? UserRepository->GetPartDefinitionRepository() : nullptr;
+	OutPartRecord = DefinitionRepository ? DefinitionRepository->ResolveOwnedPart(FoundRecord) : FoundRecord;
+	return true;
+}
+
 TArray<FSCTDOwnedTurretPartRecord> USCTDPartsRepository::GetOwnedParts() const
 {
 	const USCTDUserSaveGame* SaveGame = UserRepository ? UserRepository->GetSaveGame() : nullptr;
 	return SaveGame ? SaveGame->OwnedParts : TArray<FSCTDOwnedTurretPartRecord>();
 }
 
+TArray<FSCTDOwnedTurretPartRecord> USCTDPartsRepository::GetResolvedOwnedParts() const
+{
+	const TArray<FSCTDOwnedTurretPartRecord> OwnedParts = GetOwnedParts();
+	const USCTDPartDefinitionRepository* DefinitionRepository = UserRepository ? UserRepository->GetPartDefinitionRepository() : nullptr;
+	if (!DefinitionRepository)
+	{
+		return OwnedParts;
+	}
+
+	TArray<FSCTDOwnedTurretPartRecord> ResolvedParts;
+	ResolvedParts.Reserve(OwnedParts.Num());
+	for (const FSCTDOwnedTurretPartRecord& OwnedPart : OwnedParts)
+	{
+		ResolvedParts.Add(DefinitionRepository->ResolveOwnedPart(OwnedPart));
+	}
+	return ResolvedParts;
+}
+
 TArray<FSCTDOwnedTurretPartRecord> USCTDPartsRepository::GetOwnedPartsByType(ESCTDTurretPartType PartType) const
 {
 	TArray<FSCTDOwnedTurretPartRecord> FilteredParts;
-	const USCTDUserSaveGame* SaveGame = UserRepository ? UserRepository->GetSaveGame() : nullptr;
-	if (!SaveGame)
-	{
-		return FilteredParts;
-	}
-
-	for (const FSCTDOwnedTurretPartRecord& PartRecord : SaveGame->OwnedParts)
+	for (const FSCTDOwnedTurretPartRecord& PartRecord : GetResolvedOwnedParts())
 	{
 		if (PartRecord.PartType == PartType)
 		{

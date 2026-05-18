@@ -427,9 +427,9 @@ bool ADefenseManager::TryGetSelectedDeckTurret(FSCTDPreparedTurretRecord& OutTur
 	}
 
 	OutTurretRecord = Turrets[SelectedBuildTurretIndex];
-	const bool bFoundParts = PartsRepository->FindPart(OutTurretRecord.BasePartInstanceId, OutBasePart)
-		&& PartsRepository->FindPart(OutTurretRecord.WeaponPartInstanceId, OutWeaponPart)
-		&& PartsRepository->FindPart(OutTurretRecord.ControlPartInstanceId, OutControlPart);
+	const bool bFoundParts = PartsRepository->FindResolvedPart(OutTurretRecord.BasePartInstanceId, OutBasePart)
+		&& PartsRepository->FindResolvedPart(OutTurretRecord.WeaponPartInstanceId, OutWeaponPart)
+		&& PartsRepository->FindResolvedPart(OutTurretRecord.ControlPartInstanceId, OutControlPart);
 	if (!bFoundParts)
 	{
 		return false;
@@ -440,9 +440,9 @@ bool ADefenseManager::TryGetSelectedDeckTurret(FSCTDPreparedTurretRecord& OutTur
 		if (PartRecord.DefinitionId == TEXT("mock_base_bulwark")) { PartRecord.BuildTimeSeconds = 6.0f; }
 		else if (PartRecord.DefinitionId == TEXT("mock_base_light")) { PartRecord.BuildTimeSeconds = 3.5f; }
 		else if (PartRecord.DefinitionId == TEXT("mock_base_fortress")) { PartRecord.BuildTimeSeconds = 9.0f; }
-		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rifle")) { PartRecord.BuildTimeSeconds = 4.5f; PartRecord.AttackRange = 4.0f; }
-		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rail")) { PartRecord.BuildTimeSeconds = 7.0f; PartRecord.AttackRange = 2.0f; }
-		else if (PartRecord.DefinitionId == TEXT("mock_weapon_flak")) { PartRecord.BuildTimeSeconds = 5.5f; PartRecord.AttackRange = 6.0f; }
+		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rifle")) { PartRecord.BuildTimeSeconds = 4.5f; PartRecord.AttackRange = 4.0f; PartRecord.MinAttackDamage = 16.0f; PartRecord.MaxAttackDamage = 24.0f; }
+		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rail")) { PartRecord.BuildTimeSeconds = 7.0f; PartRecord.AttackRange = 2.0f; PartRecord.MinAttackDamage = 42.0f; PartRecord.MaxAttackDamage = 54.0f; }
+		else if (PartRecord.DefinitionId == TEXT("mock_weapon_flak")) { PartRecord.BuildTimeSeconds = 5.5f; PartRecord.AttackRange = 6.0f; PartRecord.MinAttackDamage = 22.0f; PartRecord.MaxAttackDamage = 34.0f; }
 		else if (PartRecord.DefinitionId == TEXT("mock_control_focus")) { PartRecord.BuildTimeSeconds = 3.0f; PartRecord.AIProfileId = TEXT("Nearest"); }
 		else if (PartRecord.DefinitionId == TEXT("mock_control_swarm")) { PartRecord.BuildTimeSeconds = 4.0f; PartRecord.AIProfileId = TEXT("MaxHealth"); }
 		else if (PartRecord.DefinitionId == TEXT("mock_control_elite")) { PartRecord.BuildTimeSeconds = 5.0f; PartRecord.AIProfileId = TEXT("MinHealth"); }

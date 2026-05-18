@@ -897,9 +897,9 @@ void USCTDHUDWidget::ShowBuildTurretStatsPopup(int32 TurretIndex)
 	FSCTDOwnedTurretPartRecord BasePart;
 	FSCTDOwnedTurretPartRecord WeaponPart;
 	FSCTDOwnedTurretPartRecord ControlPart;
-	if (!PartsRepository->FindPart(TurretRecord.BasePartInstanceId, BasePart)
-		|| !PartsRepository->FindPart(TurretRecord.WeaponPartInstanceId, WeaponPart)
-		|| !PartsRepository->FindPart(TurretRecord.ControlPartInstanceId, ControlPart))
+	if (!PartsRepository->FindResolvedPart(TurretRecord.BasePartInstanceId, BasePart)
+		|| !PartsRepository->FindResolvedPart(TurretRecord.WeaponPartInstanceId, WeaponPart)
+		|| !PartsRepository->FindResolvedPart(TurretRecord.ControlPartInstanceId, ControlPart))
 	{
 		HideBuildTurretStatsPopup();
 		return;
@@ -916,9 +916,12 @@ void USCTDHUDWidget::ShowBuildTurretStatsPopup(int32 TurretIndex)
 	PopupStats.DisplayName = TurretRecord.DisplayName;
 	PopupStats.MaxHealth = BasePart.BaseHealth;
 	PopupStats.Defense = BasePart.Defense;
-	PopupStats.AttackDamage = WeaponPart.AttackDamage;
+	PopupStats.MinAttackDamage = WeaponPart.MinAttackDamage;
+	PopupStats.MaxAttackDamage = WeaponPart.MaxAttackDamage;
 	PopupStats.AttackSpeed = WeaponPart.AttackSpeed;
 	PopupStats.AttackRangeTiles = WeaponPart.AttackRange;
+	PopupStats.AttackAttribute = WeaponPart.AttackAttribute;
+	PopupStats.StatusEffectChances = WeaponPart.StatusEffectChances;
 	PopupStats.AIProfileId = ControlPart.AIProfileId;
 	PopupStats.BasePartName = BasePart.DisplayName;
 	PopupStats.WeaponPartName = WeaponPart.DisplayName;

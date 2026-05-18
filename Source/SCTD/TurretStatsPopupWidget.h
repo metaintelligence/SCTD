@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Model/Combat/SCTDAttackTypes.h"
 #include "TurretStatsPopupWidget.generated.h"
 
 USTRUCT(BlueprintType)
@@ -19,7 +20,10 @@ struct FSCTDTurretPopupStats
 	float Defense = 0.0f;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
-	float AttackDamage = 0.0f;
+	float MinAttackDamage = 0.0f;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
+	float MaxAttackDamage = 0.0f;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
 	float AttackSpeed = 0.0f;
@@ -29,6 +33,12 @@ struct FSCTDTurretPopupStats
 
 	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
 	FName AIProfileId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
+	ESCTDAttackAttribute AttackAttribute = ESCTDAttackAttribute::Physical;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
+	TArray<FSCTDStatusEffectChance> StatusEffectChances;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
 	FString BasePartName;
@@ -56,4 +66,5 @@ private:
 
 	TSharedRef<SWidget> BuildStatRow(const FString& Label, const FString& Value) const;
 	FString BuildAIText() const;
+	FString BuildAttackAttributeText() const;
 };

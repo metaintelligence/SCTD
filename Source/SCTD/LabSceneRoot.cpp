@@ -111,14 +111,20 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 		if (PartRecord.DefinitionId == TEXT("mock_weapon_rifle"))
 		{
 			PartRecord.AttackRange = 4.0f;
+			PartRecord.MinAttackDamage = 16.0f;
+			PartRecord.MaxAttackDamage = 24.0f;
 		}
 		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rail"))
 		{
 			PartRecord.AttackRange = 2.0f;
+			PartRecord.MinAttackDamage = 42.0f;
+			PartRecord.MaxAttackDamage = 54.0f;
 		}
 		else if (PartRecord.DefinitionId == TEXT("mock_weapon_flak"))
 		{
 			PartRecord.AttackRange = 6.0f;
+			PartRecord.MinAttackDamage = 22.0f;
+			PartRecord.MaxAttackDamage = 34.0f;
 		}
 		else if (PartRecord.DefinitionId == TEXT("mock_control_focus"))
 		{
@@ -160,7 +166,8 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 		PartRecord.BuildTimeSeconds = BuildTime;
 		PartRecord.BaseHealth = Health;
 		PartRecord.Defense = Defense;
-		PartRecord.AttackDamage = Damage;
+		PartRecord.MinAttackDamage = Damage;
+		PartRecord.MaxAttackDamage = Damage;
 		PartRecord.AttackSpeed = Speed;
 		PartRecord.AIProfileId = AIProfile;
 		NormalizeMockPart(PartRecord);

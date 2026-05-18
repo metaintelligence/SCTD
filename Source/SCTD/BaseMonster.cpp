@@ -8,6 +8,7 @@
 #include "Engine/DamageEvents.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "FloatingDamageTextLibrary.h"
 #include "FloatingRewardTextWidget.h"
 #include "HexGridManager.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -243,6 +244,8 @@ float ABaseMonster::TakeDamage(float DamageAmount, FDamageEvent const& DamageEve
 	const float ActualDamage = FMath::Max(0.0f, PreviousHealth - GetCurrentHealth());
 	if (ActualDamage > 0.0f)
 	{
+		SCTDFloatingDamageText::Spawn(this, ActualDamage);
+
 		if (UWorld* World = GetWorld())
 		{
 			for (TActorIterator<ADefenseManager> It(World); It; ++It)
@@ -649,16 +652,19 @@ void ABaseMonster::FinishAttackPreMotion()
 
 void ABaseMonster::ApplyAttackToTarget(AActor* Target)
 {
-	if (!Target || AttackDamage <= 0.0f)
+	const float SafeMaxDamage = FMath::Max(MinAttackDamage, MaxAttackDamage);
+	if (!Target || SafeMaxDamage <= 0.0f)
 	{
 		return;
 	}
 
 	FDamageEvent DamageEvent;
-	const float AppliedDamage = Target->TakeDamage(AttackDamage, DamageEvent, GetController(), this);
+	const float SafeMinDamage = FMath::Max(0.0f, FMath::Min(MinAttackDamage, MaxAttackDamage));
+	const float RolledDamage = SafeMaxDamage > 0.0f ? FMath::FRandRange(SafeMinDamage, SafeMaxDamage) : 0.0f;
+	const float AppliedDamage = Target->TakeDamage(RolledDamage, DamageEvent, GetController(), this);
 	LogMonsterDebug(TEXT("Applied attack damage: target=%s requested=%.2f applied=%.2f"),
 		*GetNameSafe(Target),
-		AttackDamage,
+		RolledDamage,
 		AppliedDamage);
 }
 

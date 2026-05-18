@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "../Combat/SCTDAttackTypes.h"
 #include "UObject/Object.h"
 #include "SCTDTurret.generated.h"
 
@@ -26,7 +27,10 @@ struct FSCTDTurretFinalStats
 	float Defense = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
-	float AttackDamage = 0.0f;
+	float MinAttackDamage = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
+	float MaxAttackDamage = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
 	float AttackSpeed = 0.0f;
@@ -36,6 +40,12 @@ struct FSCTDTurretFinalStats
 
 	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
 	FName AIProfileId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
+	ESCTDAttackAttribute AttackAttribute = ESCTDAttackAttribute::Physical;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
+	TArray<FSCTDStatusEffectChance> StatusEffectChances;
 };
 
 UCLASS(BlueprintType, Blueprintable, EditInlineNew, DefaultToInstanced)

@@ -5,6 +5,7 @@
 #include "SCTDUserRepository.generated.h"
 
 class USCTDDeckRepository;
+class USCTDPartDefinitionRepository;
 class USCTDPartsRepository;
 class USCTDUserSaveGame;
 
@@ -33,6 +34,9 @@ public:
 	USCTDDeckRepository* GetDeckRepository() const { return DeckRepository; }
 
 	UFUNCTION(BlueprintPure, Category = "Repository|User")
+	USCTDPartDefinitionRepository* GetPartDefinitionRepository() const { return PartDefinitionRepository; }
+
+	UFUNCTION(BlueprintPure, Category = "Repository|User")
 	int32 GetSelectedTurretDeckIndex() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Repository|User")
@@ -55,6 +59,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USCTDDeckRepository> DeckRepository;
+
+	UPROPERTY(Transient)
+	TObjectPtr<USCTDPartDefinitionRepository> PartDefinitionRepository;
 
 	FString SaveSlotName = TEXT("SCTD_User");
 	int32 SaveUserIndex = 0;

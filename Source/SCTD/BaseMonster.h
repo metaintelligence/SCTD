@@ -101,7 +101,10 @@ protected:
 	float MoveSpeed = 10.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat", meta = (ClampMin = "0.0", UIMin = "0.0"))
-	float AttackDamage = 2.0f;
+	float MinAttackDamage = 2.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float MaxAttackDamage = 2.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Combat", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float AttackCooldownSeconds = 7.0f;

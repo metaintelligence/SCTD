@@ -48,9 +48,12 @@ FSCTDTurretFinalStats USCTDTurret::GetFinalStats() const
 
 	if (WeaponPart)
 	{
-		FinalStats.AttackDamage = WeaponPart->AttackDamage;
+		FinalStats.MinAttackDamage = WeaponPart->MinAttackDamage;
+		FinalStats.MaxAttackDamage = WeaponPart->MaxAttackDamage;
 		FinalStats.AttackSpeed = WeaponPart->AttackSpeed;
 		FinalStats.AttackRange = WeaponPart->AttackRange;
+		FinalStats.AttackAttribute = WeaponPart->AttackAttribute;
+		FinalStats.StatusEffectChances = WeaponPart->StatusEffectChances;
 	}
 
 	if (ControlPart)

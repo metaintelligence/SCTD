@@ -57,8 +57,11 @@ private:
 	float MaxHealth = 0.0f;
 	float CurrentHealth = 0.0f;
 	float Defense = 0.0f;
-	float AttackDamage = 0.0f;
+	float MinAttackDamage = 0.0f;
+	float MaxAttackDamage = 0.0f;
 	float AttackSpeed = 0.0f;
+	ESCTDAttackAttribute AttackAttribute = ESCTDAttackAttribute::Physical;
+	TArray<FSCTDStatusEffectChance> StatusEffectChances;
 	FName AIProfileId = NAME_None;
 	float AttackCooldownRemaining = 0.0f;
 	bool bDynamicDialogOpen = false;
@@ -72,6 +75,8 @@ private:
 	void UpdateStatsPopupLocation();
 	void ShowStatsPopup();
 	void HideStatsPopup();
+	float RollAttackDamage() const;
+	void RollStatusEffectsForTarget(ABaseMonster* Target) const;
 
 	UFUNCTION()
 	void HandleTurretBeginCursorOver(UPrimitiveComponent* TouchedComponent);
