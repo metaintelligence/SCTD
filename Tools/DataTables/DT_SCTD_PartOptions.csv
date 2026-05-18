@@ -1,0 +1,43 @@
+Name,OptionId,OptionPoolId,DisplayName,AllowedPartType,TargetStat,ValueMode,CommonMinValue,CommonMaxValue,AdvancedMinValue,AdvancedMaxValue,RareMinValue,RareMaxValue,LegendaryMinValue,LegendaryMaxValue,TargetStatusEffectType,StatusMinDurationSeconds,StatusMaxDurationSeconds,StatusMinValue,StatusMaxValue,MinValue,MaxValue,Weight
+Body_IncreaseHealth,IncreaseHealth,BaseBodyPartOptionTable,Health +%,Base,BaseHealth,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Body_IncreaseDefense,IncreaseDefense,BaseBodyPartOptionTable,Defense +%,Base,Defense,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Body_IncreaseSelfRepair,IncreaseSelfRepair,BaseBodyPartOptionTable,Repair +%,Base,SelfRepairPerSecond,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Body_IncreaseAttackSpeed,IncreaseAttackSpeed,BaseBodyPartOptionTable,Attack Speed +%,Base,AttackSpeed,AddPercentOfBase,10,20,10,25,20,25,20,30,None,0,0,0,0,0,0,1
+Body_IncreaseCriticalChance,IncreaseCriticalChance,BaseBodyPartOptionTable,Critical Chance +%,Base,CriticalChance,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Body_IncreaseCriticalDamage,IncreaseCriticalDamage,BaseBodyPartOptionTable,Critical Damage +%,Base,CriticalDamageMultiplier,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Body_ReduceBuildCost,ReduceBuildCost,BaseBodyPartOptionTable,Build Cost -%,Base,BuildCostReduction,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Body_ReduceBuildTime,ReduceBuildTime,BaseBodyPartOptionTable,Build Time -%,Base,BuildTimeReduction,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Body_ExtraScrapGain,ExtraScrapGain,BaseBodyPartOptionTable,Scrap Gain +%,Base,ScrapGainBonusRatio,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Weapon_IncreaseAttackRange,IncreaseAttackRange,BaseWeaponPartOptionTable,Range +,Weapon,AttackRange,AddFlat,1,1,1,1,2,2,2,2,None,0,0,0,0,0,0,1
+Weapon_PhysicalDamageBonus,PhysicalDamageBonus,BaseWeaponPartOptionTable,Physical Damage +%,Weapon,PhysicalDamageBonusRatio,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Weapon_FireDamageBonus,FireDamageBonus,BaseWeaponPartOptionTable,Fire Damage +%,Weapon,FireDamageBonusRatio,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Weapon_LightningDamageBonus,LightningDamageBonus,BaseWeaponPartOptionTable,Lightning Damage +%,Weapon,LightningDamageBonusRatio,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Weapon_FrostDamageBonus,FrostDamageBonus,BaseWeaponPartOptionTable,Frost Damage +%,Weapon,FrostDamageBonusRatio,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Weapon_IncreaseAttackSpeed,IncreaseAttackSpeed,BaseWeaponPartOptionTable,Attack Speed +%,Weapon,AttackSpeed,AddPercentOfBase,10,20,10,25,20,25,20,30,None,0,0,0,0,0,0,1
+Weapon_IncreaseAreaRange,IncreaseAreaRange,BaseWeaponPartOptionTable,Area +,Weapon,AreaAttackRange,AddFlat,1,1,1,1,2,2,2,2,None,0,0,0,0,0,0,1
+Weapon_IncreaseCriticalChance,IncreaseCriticalChance,BaseWeaponPartOptionTable,Critical Chance +%,Weapon,CriticalChance,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Weapon_IncreaseCriticalDamage,IncreaseCriticalDamage,BaseWeaponPartOptionTable,Critical Damage +%,Weapon,CriticalDamageMultiplier,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Weapon_ReduceBuildCost,ReduceBuildCost,BaseWeaponPartOptionTable,Build Cost -%,Weapon,BuildCostReduction,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Weapon_ReduceBuildTime,ReduceBuildTime,BaseWeaponPartOptionTable,Build Time -%,Weapon,BuildTimeReduction,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Weapon_ExtraScrapGain,ExtraScrapGain,BaseWeaponPartOptionTable,Scrap Gain +%,Weapon,ScrapGainBonusRatio,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Control_PhysicalDamageBonus,PhysicalDamageBonus,BaseControlPartOptionTable,Physical Damage +%,Control,PhysicalDamageBonusRatio,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Control_FireDamageBonus,FireDamageBonus,BaseControlPartOptionTable,Fire Damage +%,Control,FireDamageBonusRatio,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Control_LightningDamageBonus,LightningDamageBonus,BaseControlPartOptionTable,Lightning Damage +%,Control,LightningDamageBonusRatio,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Control_FrostDamageBonus,FrostDamageBonus,BaseControlPartOptionTable,Frost Damage +%,Control,FrostDamageBonusRatio,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Control_IncreaseHealth,IncreaseHealth,BaseControlPartOptionTable,Health +%,Control,BaseHealth,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Control_IncreaseDefense,IncreaseDefense,BaseControlPartOptionTable,Defense +%,Control,Defense,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Control_IncreaseSelfRepair,IncreaseSelfRepair,BaseControlPartOptionTable,Repair +%,Control,SelfRepairPerSecond,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Control_IncreaseCriticalChance,IncreaseCriticalChance,BaseControlPartOptionTable,Critical Chance +%,Control,CriticalChance,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Control_IncreaseCriticalDamage,IncreaseCriticalDamage,BaseControlPartOptionTable,Critical Damage +%,Control,CriticalDamageMultiplier,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Control_AmplifyStatusChance,AmplifyStatusChance,BaseControlPartOptionTable,Status Chance +%,Control,StatusEffectChanceMultiplier,AddPercentOfBase,10,20,10,25,15,25,20,30,None,0,0,0,0,0,0,1
+Control_ReduceBuildCost,ReduceBuildCost,BaseControlPartOptionTable,Build Cost -%,Control,BuildCostReduction,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Control_ReduceBuildTime,ReduceBuildTime,BaseControlPartOptionTable,Build Time -%,Control,BuildTimeReduction,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Control_ExtraScrapGain,ExtraScrapGain,BaseControlPartOptionTable,Scrap Gain +%,Control,ScrapGainBonusRatio,AddPercentOfBase,5,10,5,10,5,15,10,20,None,0,0,0,0,0,0,1
+Control_PhysicalDestruction,PhysicalDestruction,BaseControlPartOptionTable,Destruction,Control,StatusEffectSpec,AddFlat,0,0,0,0,0,0,0,0,Destruction,5,5,30,70,0,0,1
+Control_PhysicalConcussion,PhysicalConcussion,BaseControlPartOptionTable,Concussion,Control,StatusEffectSpec,AddFlat,0,0,0,0,0,0,0,0,Concussion,3,6,0,0,0,0,1
+Control_FireIgnite,FireIgnite,BaseControlPartOptionTable,Ignite,Control,StatusEffectSpec,AddFlat,0,0,0,0,0,0,0,0,Ignite,3,6,3,3,0,0,1
+Control_FireTileBurn,FireTileBurn,BaseControlPartOptionTable,Fire,Control,StatusEffectSpec,AddFlat,0,0,0,0,0,0,0,0,Fire,3,6,3,3,0,0,1
+Control_LightningStagger,LightningStagger,BaseControlPartOptionTable,Stagger,Control,StatusEffectSpec,AddFlat,0,0,0,0,0,0,0,0,Stagger,0.2,0.5,0,0,0,0,1
+Control_LightningExecute,LightningExecute,BaseControlPartOptionTable,Execute,Control,StatusEffectSpec,AddFlat,0,0,0,0,0,0,0,0,Execute,3,6,10,10,0,0,1
+Control_FrostChill,FrostChill,BaseControlPartOptionTable,Chill,Control,StatusEffectSpec,AddFlat,0,0,0,0,0,0,0,0,Chill,5,5,30,70,0,0,1
+Control_FrostFreeze,FrostFreeze,BaseControlPartOptionTable,Freeze,Control,StatusEffectSpec,AddFlat,0,0,0,0,0,0,0,0,Freeze,3,6,0,0,0,0,1

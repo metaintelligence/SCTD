@@ -229,6 +229,20 @@ void ADefenseManager::EnsureUserRepository()
 	{
 		UserRepository = USCTDUserRepository::CreateUserRepository(this);
 	}
+	ConfigurePartDefinitionRepository();
+}
+
+void ADefenseManager::ConfigurePartDefinitionRepository()
+{
+	USCTDPartDefinitionRepository* DefinitionRepository = UserRepository ? UserRepository->GetPartDefinitionRepository() : nullptr;
+	if (!DefinitionRepository)
+	{
+		return;
+	}
+
+	DefinitionRepository->SetDefinitionTables(BasePartDefinitionTable, WeaponPartDefinitionTable, ControlPartDefinitionTable);
+	DefinitionRepository->SetOptionTable(PartOptionTable);
+	DefinitionRepository->SetRarityTable(ItemRarityTable);
 }
 
 void ADefenseManager::TickResources(float DeltaSeconds)
@@ -300,6 +314,7 @@ void ADefenseManager::RollMonsterItemDrop(ABaseMonster* Monster, float DropRate)
 	const TArray<FSCTDTurretPartDefinitionRow> Definitions = DefinitionRepository->GetPartDefinitionsByType(PartType);
 	if (Definitions.Num() == 0)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Monster item drop skipped: no part definitions are configured for part type %d."), static_cast<int32>(PartType));
 		return;
 	}
 

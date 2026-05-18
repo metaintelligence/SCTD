@@ -10,6 +10,14 @@ namespace
 
 	void AddPercentRanges(FSCTDTurretPartOptionDefinitionRow& Option, float CommonMin, float CommonMax, float AdvancedMin, float AdvancedMax, float RareMin, float RareMax, float LegendaryMin, float LegendaryMax)
 	{
+		Option.CommonMinValue = CommonMin;
+		Option.CommonMaxValue = CommonMax;
+		Option.AdvancedMinValue = AdvancedMin;
+		Option.AdvancedMaxValue = AdvancedMax;
+		Option.RareMinValue = RareMin;
+		Option.RareMaxValue = RareMax;
+		Option.LegendaryMinValue = LegendaryMin;
+		Option.LegendaryMaxValue = LegendaryMax;
 		Option.RarityRanges = {
 			{ ESCTDItemRarity::Common, CommonMin, CommonMax },
 			{ ESCTDItemRarity::Advanced, AdvancedMin, AdvancedMax },
@@ -134,6 +142,18 @@ bool USCTDPartDefinitionRepository::FindOptionDefinition(FName OptionId, FSCTDTu
 			}
 			return true;
 		}
+
+		for (const FName RowName : OptionTable->GetRowNames())
+		{
+			if (const FSCTDTurretPartOptionDefinitionRow* FoundDefinition = OptionTable->FindRow<FSCTDTurretPartOptionDefinitionRow>(RowName, PartOptionContext, false))
+			{
+				if (FoundDefinition->OptionId == OptionId)
+				{
+					OutDefinition = *FoundDefinition;
+					return true;
+				}
+			}
+		}
 	}
 
 	for (const TPair<FName, ESCTDTurretPartType> PoolAndType : {
@@ -221,6 +241,10 @@ TArray<FSCTDTurretPartOptionDefinitionRow> USCTDPartDefinitionRepository::GetOpt
 					Option.StatusEffectSpec.MaxDurationSeconds = MaxDuration;
 					Option.StatusEffectSpec.MinValue = MinValue;
 					Option.StatusEffectSpec.MaxValue = MaxValue;
+					Option.StatusMinDurationSeconds = MinDuration;
+					Option.StatusMaxDurationSeconds = MaxDuration;
+					Option.StatusMinValue = MinValue;
+					Option.StatusMaxValue = MaxValue;
 					Options.Add(Option);
 				};
 				AddStatusOption(TEXT("PhysicalDestruction"), ESCTDStatusEffectType::Destruction, 5.0f, 5.0f, 0.30f, 0.70f);
@@ -517,7 +541,27 @@ bool USCTDPartDefinitionRepository::TryGetOptionValueRangeForRarity(const FSCTDT
 			return true;
 		}
 	}
-	return false;
+	switch (Rarity)
+	{
+	case ESCTDItemRarity::Common:
+		OutMinValue = OptionDefinition.CommonMinValue;
+		OutMaxValue = OptionDefinition.CommonMaxValue;
+		return true;
+	case ESCTDItemRarity::Advanced:
+		OutMinValue = OptionDefinition.AdvancedMinValue;
+		OutMaxValue = OptionDefinition.AdvancedMaxValue;
+		return true;
+	case ESCTDItemRarity::Rare:
+		OutMinValue = OptionDefinition.RareMinValue;
+		OutMaxValue = OptionDefinition.RareMaxValue;
+		return true;
+	case ESCTDItemRarity::Legendary:
+		OutMinValue = OptionDefinition.LegendaryMinValue;
+		OutMaxValue = OptionDefinition.LegendaryMaxValue;
+		return true;
+	default:
+		return false;
+	}
 }
 
 void USCTDPartDefinitionRepository::ApplyDefinitionToOwnedPart(const FSCTDTurretPartDefinitionRow& Definition, FSCTDOwnedTurretPartRecord& PartRecord) const
@@ -678,7 +722,16 @@ void USCTDPartDefinitionRepository::ApplyRolledOptionsToOwnedPart(const TArray<F
 		}
 		else if (OptionDefinition.TargetStat == TEXT("StatusEffectSpec"))
 		{
-			PartRecord.StatusEffectSpecs.Add(OptionDefinition.StatusEffectSpec);
+			FSCTDStatusEffectSpec StatusEffectSpec = OptionDefinition.StatusEffectSpec;
+			if (StatusEffectSpec.EffectType == ESCTDStatusEffectType::None)
+			{
+				StatusEffectSpec.EffectType = OptionDefinition.TargetStatusEffectType;
+				StatusEffectSpec.MinDurationSeconds = OptionDefinition.StatusMinDurationSeconds;
+				StatusEffectSpec.MaxDurationSeconds = OptionDefinition.StatusMaxDurationSeconds;
+				StatusEffectSpec.MinValue = OptionDefinition.StatusMinValue;
+				StatusEffectSpec.MaxValue = OptionDefinition.StatusMaxValue;
+			}
+			PartRecord.StatusEffectSpecs.Add(StatusEffectSpec);
 		}
 	}
 }

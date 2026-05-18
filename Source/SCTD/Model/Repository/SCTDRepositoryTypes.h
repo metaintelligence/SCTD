@@ -182,10 +182,46 @@ struct FSCTDTurretPartOptionDefinitionRow : public FTableRowBase
 	TArray<FSCTDPartOptionRarityRange> RarityRanges;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float CommonMinValue = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float CommonMaxValue = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float AdvancedMinValue = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float AdvancedMaxValue = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float RareMinValue = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float RareMaxValue = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float LegendaryMinValue = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float LegendaryMaxValue = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
 	ESCTDStatusEffectType TargetStatusEffectType = ESCTDStatusEffectType::None;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
 	FSCTDStatusEffectSpec StatusEffectSpec;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float StatusMinDurationSeconds = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float StatusMaxDurationSeconds = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float StatusMinValue = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
+	float StatusMaxValue = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Option")
 	float MinValue = 0.0f;

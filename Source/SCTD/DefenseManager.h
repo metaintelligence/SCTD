@@ -11,6 +11,7 @@ class AFlyingPlayerPawn;
 class AHexGridManager;
 class ASCTDDefenseTurret;
 class USCTDUserRepository;
+class UDataTable;
 
 USTRUCT(BlueprintType)
 struct FDefenseDamageSummaryRow
@@ -212,6 +213,21 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Defense|Flow")
 	bool bStartOnBeginPlay = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Defense|Item Drop|Definitions")
+	TObjectPtr<UDataTable> BasePartDefinitionTable;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Defense|Item Drop|Definitions")
+	TObjectPtr<UDataTable> WeaponPartDefinitionTable;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Defense|Item Drop|Definitions")
+	TObjectPtr<UDataTable> ControlPartDefinitionTable;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Defense|Item Drop|Definitions")
+	TObjectPtr<UDataTable> PartOptionTable;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Defense|Item Drop|Definitions")
+	TObjectPtr<UDataTable> ItemRarityTable;
+
 private:
 	bool bDefenseRunning = false;
 	bool bDefenseFinished = false;
@@ -262,6 +278,7 @@ private:
 
 	void CacheHexGridManager();
 	void EnsureUserRepository();
+	void ConfigurePartDefinitionRepository();
 	void TickResources(float DeltaSeconds);
 	void TickSpawning(float DeltaSeconds);
 	void TickDefenseResult();

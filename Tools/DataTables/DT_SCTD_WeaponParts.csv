@@ -1,0 +1,4 @@
+Name,DefinitionId,PartType,DisplayName,Description,BuildCost,BuildTimeSeconds,OptionPoolId,MountType,BaseHealth,Defense,SelfRepairPerSecond,MinAttackDamage,MaxAttackDamage,AttackSpeed,AttackRange,AreaAttackRange,bCanAreaAttack,CriticalChance,CriticalDamageMultiplier,AttackAttribute,TargetingAI
+part_weapon_mortar,part_weapon_mortar,Weapon,MORTAR,느리지만 장거리 광역 공격이 가능한 박격포이다.,100,5.0,BaseWeaponPartOptionTable,Tower,0,0,0,10,20,0.33,5,1,true,0.10,1.50,Physical,Closer
+part_weapon_minigun,part_weapon_minigun,Weapon,MINIGUN,중거리 대응 사격에 탁월한 미니건이다.,100,3.0,BaseWeaponPartOptionTable,Cannon,0,0,0,4,6,3.0,3,0,false,0.20,1.50,Physical,Closer
+part_weapon_axe,part_weapon_axe,Weapon,AXE,강력한 근거리 공격으로 무엇도 놓치지 않는 도끼이다.,100,2.0,BaseWeaponPartOptionTable,Arm,0,0,0,9,11,1.0,1,0,false,0.20,1.50,Physical,Closer

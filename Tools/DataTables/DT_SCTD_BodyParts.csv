@@ -1,0 +1,4 @@
+Name,DefinitionId,PartType,DisplayName,Description,BuildCost,BuildTimeSeconds,OptionPoolId,MountType,BaseHealth,Defense,SelfRepairPerSecond,MinAttackDamage,MaxAttackDamage,AttackSpeed,AttackRange,AreaAttackRange,bCanAreaAttack,CriticalChance,CriticalDamageMultiplier,AttackAttribute,TargetingAI
+part_body_pylon,part_body_pylon,Base,PYLON,저가형 파일런은 타워형 무기를 탑재할 수 있다.,100,5.0,BaseBodyPartOptionTable,Tower,400,10,1,0,0,0,0,0,false,0,1.5,Physical,Closer
+part_body_quirass,part_body_quirass,Base,QUIRASS,저가형 갑옷으로 양팔형 무기를 탑재할 수 있다.,100,2.0,BaseBodyPartOptionTable,Arm,600,20,2,0,0,0,0,0,false,0,1.5,Physical,Closer
+part_body_gunstock,part_body_gunstock,Base,GUNSTOCK,저가형 개머리판으로 캐논형 무기를 탑재할 수 있다.,100,3.0,BaseBodyPartOptionTable,Cannon,200,10,1,0,0,0,0,0,false,0,1.5,Physical,Closer
