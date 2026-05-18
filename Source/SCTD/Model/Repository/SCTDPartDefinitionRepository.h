@@ -72,7 +72,6 @@ private:
 	TObjectPtr<UDataTable> RarityTable;
 
 	const UDataTable* GetPartTable(ESCTDTurretPartType PartType) const;
-	FSCTDItemRarityDefinitionRow GetDefaultRarityDefinition(ESCTDItemRarity Rarity) const;
 	bool TryGetOptionValueRangeForRarity(const FSCTDTurretPartOptionDefinitionRow& OptionDefinition, ESCTDItemRarity Rarity, float& OutMinValue, float& OutMaxValue) const;
 	void ApplyDefinitionToOwnedPart(const FSCTDTurretPartDefinitionRow& Definition, FSCTDOwnedTurretPartRecord& PartRecord) const;
 	void ApplyRolledOptionsToOwnedPart(const TArray<FSCTDRolledTurretPartOption>& RolledOptions, FSCTDOwnedTurretPartRecord& PartRecord) const;

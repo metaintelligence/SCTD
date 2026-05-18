@@ -1,6 +1,6 @@
 Name,Rarity,Weight,DisplayColor,MinOptionCount,MaxOptionCount
-Common,Common,50.0,(R=1.0,G=1.0,B=1.0,A=1.0),1,1
-Advanced,Advanced,25.0,(R=0.6,G=1.0,B=0.6,A=1.0),2,2
-Rare,Rare,12.5,(R=0.5,G=0.82,B=1.0,A=1.0),3,3
-Legendary,Legendary,6.25,(R=0.84,G=0.62,B=1.0,A=1.0),4,5
-NoDrop,NoDrop,6.25,(R=0.0,G=0.0,B=0.0,A=0.0),0,0
+Common,Common,50.0,"(R=1.0,G=1.0,B=1.0,A=1.0)",1,1
+Advanced,Advanced,25.0,"(R=0.6,G=1.0,B=0.6,A=1.0)",2,2
+Rare,Rare,12.5,"(R=0.5,G=0.82,B=1.0,A=1.0)",3,3
+Legendary,Legendary,6.25,"(R=0.84,G=0.62,B=1.0,A=1.0)",4,5
+NoDrop,NoDrop,6.25,"(R=0.0,G=0.0,B=0.0,A=0.0)",0,0

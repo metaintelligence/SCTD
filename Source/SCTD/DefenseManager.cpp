@@ -15,10 +15,60 @@
 #include "Model/Repository/SCTDUserSaveGame.h"
 #include "Misc/DateTime.h"
 #include "SCTDDefenseTurret.h"
+#include "UObject/ConstructorHelpers.h"
+
+namespace
+{
+	FString GetPartTypeName(ESCTDTurretPartType PartType)
+	{
+		switch (PartType)
+		{
+		case ESCTDTurretPartType::Base:
+			return TEXT("BODY");
+		case ESCTDTurretPartType::Weapon:
+			return TEXT("WEAPON");
+		case ESCTDTurretPartType::Control:
+			return TEXT("CONTROL");
+		default:
+			return TEXT("-");
+		}
+	}
+
+	FString GetRarityName(ESCTDItemRarity Rarity)
+	{
+		switch (Rarity)
+		{
+		case ESCTDItemRarity::Common:
+			return TEXT("COMMON");
+		case ESCTDItemRarity::Advanced:
+			return TEXT("ADVANCED");
+		case ESCTDItemRarity::Rare:
+			return TEXT("RARE");
+		case ESCTDItemRarity::Legendary:
+			return TEXT("LEGENDARY");
+		case ESCTDItemRarity::NoDrop:
+			return TEXT("NO DROP");
+		default:
+			return TEXT("-");
+		}
+	}
+}
 
 ADefenseManager::ADefenseManager()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	static ConstructorHelpers::FObjectFinder<UDataTable> BasePartTableFinder(TEXT("/Game/DataTables/DT_SCTD_BodyParts.DT_SCTD_BodyParts"));
+	static ConstructorHelpers::FObjectFinder<UDataTable> WeaponPartTableFinder(TEXT("/Game/DataTables/DT_SCTD_WeaponParts.DT_SCTD_WeaponParts"));
+	static ConstructorHelpers::FObjectFinder<UDataTable> ControlPartTableFinder(TEXT("/Game/DataTables/DT_SCTD_ControlParts.DT_SCTD_ControlParts"));
+	static ConstructorHelpers::FObjectFinder<UDataTable> PartOptionTableFinder(TEXT("/Game/DataTables/DT_SCTD_PartOptions.DT_SCTD_PartOptions"));
+	static ConstructorHelpers::FObjectFinder<UDataTable> ItemRarityTableFinder(TEXT("/Game/DataTables/DT_SCTD_ItemRarity.DT_SCTD_ItemRarity"));
+
+	BasePartDefinitionTable = BasePartTableFinder.Object;
+	WeaponPartDefinitionTable = WeaponPartTableFinder.Object;
+	ControlPartDefinitionTable = ControlPartTableFinder.Object;
+	PartOptionTable = PartOptionTableFinder.Object;
+	ItemRarityTable = ItemRarityTableFinder.Object;
 }
 
 void ADefenseManager::BeginPlay()
@@ -90,6 +140,7 @@ void ADefenseManager::StartDefense()
 	UserScrapBeforeResult = UserRepository ? UserRepository->GetScrap() : 0;
 	TotalUserScrapAfterResult = UserScrapBeforeResult;
 	DamageSummaryByType.Reset();
+	AcquiredItemsThisRun.Reset();
 	DefensePlayerLevel = 1;
 	CurrentLevelExperience = 0.0f;
 	NextLevelExperienceRequirement = 1000.0f;
@@ -243,6 +294,16 @@ void ADefenseManager::ConfigurePartDefinitionRepository()
 	DefinitionRepository->SetDefinitionTables(BasePartDefinitionTable, WeaponPartDefinitionTable, ControlPartDefinitionTable);
 	DefinitionRepository->SetOptionTable(PartOptionTable);
 	DefinitionRepository->SetRarityTable(ItemRarityTable);
+
+	if (!BasePartDefinitionTable || !WeaponPartDefinitionTable || !ControlPartDefinitionTable || !PartOptionTable || !ItemRarityTable)
+	{
+		UE_LOG(LogTemp, Error, TEXT("DefenseManager item drop DataTables are not fully configured. Base=%s Weapon=%s Control=%s Options=%s Rarity=%s"),
+			BasePartDefinitionTable ? TEXT("OK") : TEXT("MISSING"),
+			WeaponPartDefinitionTable ? TEXT("OK") : TEXT("MISSING"),
+			ControlPartDefinitionTable ? TEXT("OK") : TEXT("MISSING"),
+			PartOptionTable ? TEXT("OK") : TEXT("MISSING"),
+			ItemRarityTable ? TEXT("OK") : TEXT("MISSING"));
+	}
 }
 
 void ADefenseManager::TickResources(float DeltaSeconds)
@@ -323,8 +384,23 @@ void ADefenseManager::RollMonsterItemDrop(ABaseMonster* Monster, float DropRate)
 		FMath::Max(0, RarityDefinition.MinOptionCount),
 		FMath::Max(RarityDefinition.MinOptionCount, RarityDefinition.MaxOptionCount));
 
-	if (PartsRepository->AddPartByDefinitionIdAndRarity(SelectedDefinition.DefinitionId, RarityDefinition.Rarity, OptionCount, RarityDefinition.DisplayColor, false).IsValid())
+	const FGuid AcquiredItemId = PartsRepository->AddPartByDefinitionIdAndRarity(SelectedDefinition.DefinitionId, RarityDefinition.Rarity, OptionCount, RarityDefinition.DisplayColor, false);
+	if (AcquiredItemId.IsValid())
 	{
+		FDefenseAcquiredItemSummaryRow AcquiredItem;
+		AcquiredItem.DisplayName = SelectedDefinition.DisplayName.ToString();
+		AcquiredItem.PartTypeName = GetPartTypeName(SelectedDefinition.PartType);
+		AcquiredItem.RarityName = GetRarityName(RarityDefinition.Rarity);
+		AcquiredItem.OptionCount = OptionCount;
+		AcquiredItemsThisRun.Add(AcquiredItem);
+
+		UE_LOG(LogTemp, Log, TEXT("Item acquired from monster drop: Name=%s Type=%s Rarity=%s Options=%d DefinitionId=%s InstanceId=%s"),
+			*AcquiredItem.DisplayName,
+			*AcquiredItem.PartTypeName,
+			*AcquiredItem.RarityName,
+			AcquiredItem.OptionCount,
+			*SelectedDefinition.DefinitionId.ToString(),
+			*AcquiredItemId.ToString());
 		UserRepository->Save();
 	}
 }

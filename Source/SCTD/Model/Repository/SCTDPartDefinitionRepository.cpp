@@ -7,37 +7,6 @@ namespace
 	const TCHAR* PartDefinitionContext = TEXT("SCTDPartDefinitionRepository");
 	const TCHAR* PartOptionContext = TEXT("SCTDPartOptionRepository");
 	const TCHAR* RarityContext = TEXT("SCTDItemRarityRepository");
-
-	void AddPercentRanges(FSCTDTurretPartOptionDefinitionRow& Option, float CommonMin, float CommonMax, float AdvancedMin, float AdvancedMax, float RareMin, float RareMax, float LegendaryMin, float LegendaryMax)
-	{
-		Option.CommonMinValue = CommonMin;
-		Option.CommonMaxValue = CommonMax;
-		Option.AdvancedMinValue = AdvancedMin;
-		Option.AdvancedMaxValue = AdvancedMax;
-		Option.RareMinValue = RareMin;
-		Option.RareMaxValue = RareMax;
-		Option.LegendaryMinValue = LegendaryMin;
-		Option.LegendaryMaxValue = LegendaryMax;
-		Option.RarityRanges = {
-			{ ESCTDItemRarity::Common, CommonMin, CommonMax },
-			{ ESCTDItemRarity::Advanced, AdvancedMin, AdvancedMax },
-			{ ESCTDItemRarity::Rare, RareMin, RareMax },
-			{ ESCTDItemRarity::Legendary, LegendaryMin, LegendaryMax }
-		};
-	}
-
-	FSCTDTurretPartOptionDefinitionRow MakeOption(FName OptionId, FName PoolId, ESCTDTurretPartType PartType, FName TargetStat, ESCTDPartOptionValueMode ValueMode)
-	{
-		FSCTDTurretPartOptionDefinitionRow Option;
-		Option.OptionId = OptionId;
-		Option.OptionPoolId = PoolId;
-		Option.DisplayName = FText::FromName(OptionId);
-		Option.AllowedPartType = PartType;
-		Option.TargetStat = TargetStat;
-		Option.ValueMode = ValueMode;
-		Option.Weight = 1.0f;
-		return Option;
-	}
 }
 
 void USCTDPartDefinitionRepository::SetDefinitionTables(UDataTable* NewBasePartTable, UDataTable* NewWeaponPartTable, UDataTable* NewControlPartTable)
@@ -156,22 +125,6 @@ bool USCTDPartDefinitionRepository::FindOptionDefinition(FName OptionId, FSCTDTu
 		}
 	}
 
-	for (const TPair<FName, ESCTDTurretPartType> PoolAndType : {
-		TPair<FName, ESCTDTurretPartType>(TEXT("BaseWeaponPartOptionTable"), ESCTDTurretPartType::Weapon),
-		TPair<FName, ESCTDTurretPartType>(TEXT("BaseBodyPartOptionTable"), ESCTDTurretPartType::Base),
-		TPair<FName, ESCTDTurretPartType>(TEXT("BaseControlPartOptionTable"), ESCTDTurretPartType::Control)
-	})
-	{
-		for (const FSCTDTurretPartOptionDefinitionRow& OptionDefinition : GetOptionsForPool(PoolAndType.Key, PoolAndType.Value))
-		{
-			if (OptionDefinition.OptionId == OptionId)
-			{
-				OutDefinition = OptionDefinition;
-				return true;
-			}
-		}
-	}
-
 	return false;
 }
 
@@ -180,83 +133,7 @@ TArray<FSCTDTurretPartOptionDefinitionRow> USCTDPartDefinitionRepository::GetOpt
 	TArray<FSCTDTurretPartOptionDefinitionRow> Options;
 	if (!OptionTable || OptionPoolId.IsNone())
 	{
-		if (!OptionPoolId.IsNone())
-		{
-			auto AddDefault = [&Options, OptionPoolId, PartType](FName OptionId, FName TargetStat, ESCTDPartOptionValueMode ValueMode, float CommonMin, float CommonMax, float AdvancedMin, float AdvancedMax, float RareMin, float RareMax, float LegendaryMin, float LegendaryMax)
-			{
-				FSCTDTurretPartOptionDefinitionRow Option = MakeOption(OptionId, OptionPoolId, PartType, TargetStat, ValueMode);
-				AddPercentRanges(Option, CommonMin, CommonMax, AdvancedMin, AdvancedMax, RareMin, RareMax, LegendaryMin, LegendaryMax);
-				Options.Add(Option);
-			};
-
-			if (OptionPoolId == TEXT("BaseWeaponPartOptionTable"))
-			{
-				AddDefault(TEXT("IncreaseAttackRange"), TEXT("AttackRange"), ESCTDPartOptionValueMode::AddFlat, 1, 1, 1, 1, 2, 2, 2, 2);
-				AddDefault(TEXT("PhysicalDamageBonus"), TEXT("PhysicalDamageBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("FireDamageBonus"), TEXT("FireDamageBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("LightningDamageBonus"), TEXT("LightningDamageBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("FrostDamageBonus"), TEXT("FrostDamageBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("IncreaseAttackSpeed"), TEXT("AttackSpeed"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 20, 25, 20, 30);
-				AddDefault(TEXT("IncreaseAreaRange"), TEXT("AreaAttackRange"), ESCTDPartOptionValueMode::AddFlat, 1, 1, 1, 1, 2, 2, 2, 2);
-				AddDefault(TEXT("IncreaseCriticalChance"), TEXT("CriticalChance"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("IncreaseCriticalDamage"), TEXT("CriticalDamageMultiplier"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("ReduceBuildCost"), TEXT("BuildCostReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("ReduceBuildTime"), TEXT("BuildTimeReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("ExtraScrapGain"), TEXT("ScrapGainBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-			}
-			else if (OptionPoolId == TEXT("BaseBodyPartOptionTable"))
-			{
-				AddDefault(TEXT("IncreaseHealth"), TEXT("BaseHealth"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("IncreaseDefense"), TEXT("Defense"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("IncreaseSelfRepair"), TEXT("SelfRepairPerSecond"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("IncreaseAttackSpeed"), TEXT("AttackSpeed"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 20, 25, 20, 30);
-				AddDefault(TEXT("IncreaseCriticalChance"), TEXT("CriticalChance"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("IncreaseCriticalDamage"), TEXT("CriticalDamageMultiplier"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("ReduceBuildCost"), TEXT("BuildCostReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("ReduceBuildTime"), TEXT("BuildTimeReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("ExtraScrapGain"), TEXT("ScrapGainBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-			}
-			else if (OptionPoolId == TEXT("BaseControlPartOptionTable"))
-			{
-				AddDefault(TEXT("PhysicalDamageBonus"), TEXT("PhysicalDamageBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("FireDamageBonus"), TEXT("FireDamageBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("LightningDamageBonus"), TEXT("LightningDamageBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("FrostDamageBonus"), TEXT("FrostDamageBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("IncreaseHealth"), TEXT("BaseHealth"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("IncreaseDefense"), TEXT("Defense"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("IncreaseSelfRepair"), TEXT("SelfRepairPerSecond"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("IncreaseCriticalChance"), TEXT("CriticalChance"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("IncreaseCriticalDamage"), TEXT("CriticalDamageMultiplier"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("AmplifyStatusChance"), TEXT("StatusEffectChanceMultiplier"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
-				AddDefault(TEXT("ReduceBuildCost"), TEXT("BuildCostReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("ReduceBuildTime"), TEXT("BuildTimeReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-				AddDefault(TEXT("ExtraScrapGain"), TEXT("ScrapGainBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
-
-				auto AddStatusOption = [&Options, OptionPoolId, PartType](FName OptionId, ESCTDStatusEffectType EffectType, float MinDuration, float MaxDuration, float MinValue, float MaxValue)
-				{
-					FSCTDTurretPartOptionDefinitionRow Option = MakeOption(OptionId, OptionPoolId, PartType, TEXT("StatusEffectSpec"), ESCTDPartOptionValueMode::AddFlat);
-					Option.TargetStatusEffectType = EffectType;
-					Option.StatusEffectSpec.EffectType = EffectType;
-					Option.StatusEffectSpec.MinDurationSeconds = MinDuration;
-					Option.StatusEffectSpec.MaxDurationSeconds = MaxDuration;
-					Option.StatusEffectSpec.MinValue = MinValue;
-					Option.StatusEffectSpec.MaxValue = MaxValue;
-					Option.StatusMinDurationSeconds = MinDuration;
-					Option.StatusMaxDurationSeconds = MaxDuration;
-					Option.StatusMinValue = MinValue;
-					Option.StatusMaxValue = MaxValue;
-					Options.Add(Option);
-				};
-				AddStatusOption(TEXT("PhysicalDestruction"), ESCTDStatusEffectType::Destruction, 5.0f, 5.0f, 0.30f, 0.70f);
-				AddStatusOption(TEXT("PhysicalConcussion"), ESCTDStatusEffectType::Concussion, 3.0f, 6.0f, 0.0f, 0.0f);
-				AddStatusOption(TEXT("FireIgnite"), ESCTDStatusEffectType::Ignite, 3.0f, 6.0f, 0.03f, 0.03f);
-				AddStatusOption(TEXT("FireTileBurn"), ESCTDStatusEffectType::Fire, 3.0f, 6.0f, 0.03f, 0.03f);
-				AddStatusOption(TEXT("LightningStagger"), ESCTDStatusEffectType::Stagger, 0.2f, 0.5f, 0.0f, 0.0f);
-				AddStatusOption(TEXT("LightningExecute"), ESCTDStatusEffectType::Execute, 3.0f, 6.0f, 0.10f, 0.10f);
-				AddStatusOption(TEXT("FrostChill"), ESCTDStatusEffectType::Chill, 5.0f, 5.0f, 0.30f, 0.70f);
-				AddStatusOption(TEXT("FrostFreeze"), ESCTDStatusEffectType::Freeze, 3.0f, 6.0f, 0.0f, 0.0f);
-			}
-		}
+		UE_LOG(LogTemp, Error, TEXT("Part option table is not configured for option pool '%s'."), *OptionPoolId.ToString());
 		return Options;
 	}
 
@@ -411,13 +288,14 @@ FSCTDItemRarityDefinitionRow USCTDPartDefinitionRepository::RollRarity() const
 
 	if (CandidateRarities.Num() == 0)
 	{
-		CandidateRarities = {
-			GetDefaultRarityDefinition(ESCTDItemRarity::Common),
-			GetDefaultRarityDefinition(ESCTDItemRarity::Advanced),
-			GetDefaultRarityDefinition(ESCTDItemRarity::Rare),
-			GetDefaultRarityDefinition(ESCTDItemRarity::Legendary),
-			GetDefaultRarityDefinition(ESCTDItemRarity::NoDrop)
-		};
+		UE_LOG(LogTemp, Error, TEXT("Item rarity table is not configured or has no weighted rows. Item drop will be skipped."));
+		FSCTDItemRarityDefinitionRow NoDropDefinition;
+		NoDropDefinition.Rarity = ESCTDItemRarity::NoDrop;
+		NoDropDefinition.Weight = 0.0f;
+		NoDropDefinition.DisplayColor = FLinearColor::Transparent;
+		NoDropDefinition.MinOptionCount = 0;
+		NoDropDefinition.MaxOptionCount = 0;
+		return NoDropDefinition;
 	}
 
 	float TotalWeight = 0.0f;
@@ -487,47 +365,6 @@ const UDataTable* USCTDPartDefinitionRepository::GetPartTable(ESCTDTurretPartTyp
 	default:
 		return nullptr;
 	}
-}
-
-FSCTDItemRarityDefinitionRow USCTDPartDefinitionRepository::GetDefaultRarityDefinition(ESCTDItemRarity Rarity) const
-{
-	FSCTDItemRarityDefinitionRow Definition;
-	Definition.Rarity = Rarity;
-	switch (Rarity)
-	{
-	case ESCTDItemRarity::Common:
-		Definition.Weight = 50.0f;
-		Definition.DisplayColor = FLinearColor::White;
-		Definition.MinOptionCount = 1;
-		Definition.MaxOptionCount = 1;
-		break;
-	case ESCTDItemRarity::Advanced:
-		Definition.Weight = 25.0f;
-		Definition.DisplayColor = FLinearColor(0.60f, 1.0f, 0.60f, 1.0f);
-		Definition.MinOptionCount = 2;
-		Definition.MaxOptionCount = 2;
-		break;
-	case ESCTDItemRarity::Rare:
-		Definition.Weight = 12.5f;
-		Definition.DisplayColor = FLinearColor(0.50f, 0.82f, 1.0f, 1.0f);
-		Definition.MinOptionCount = 3;
-		Definition.MaxOptionCount = 3;
-		break;
-	case ESCTDItemRarity::Legendary:
-		Definition.Weight = 6.25f;
-		Definition.DisplayColor = FLinearColor(0.84f, 0.62f, 1.0f, 1.0f);
-		Definition.MinOptionCount = 4;
-		Definition.MaxOptionCount = 5;
-		break;
-	case ESCTDItemRarity::NoDrop:
-	default:
-		Definition.Weight = 6.25f;
-		Definition.DisplayColor = FLinearColor::Transparent;
-		Definition.MinOptionCount = 0;
-		Definition.MaxOptionCount = 0;
-		break;
-	}
-	return Definition;
 }
 
 bool USCTDPartDefinitionRepository::TryGetOptionValueRangeForRarity(const FSCTDTurretPartOptionDefinitionRow& OptionDefinition, ESCTDItemRarity Rarity, float& OutMinValue, float& OutMaxValue) const
@@ -602,10 +439,22 @@ void USCTDPartDefinitionRepository::ApplyRolledOptionsToOwnedPart(const TArray<F
 	for (const FSCTDRolledTurretPartOption& RolledOption : RolledOptions)
 	{
 		FSCTDTurretPartOptionDefinitionRow OptionDefinition;
-		if (!FindOptionDefinition(RolledOption.OptionId, OptionDefinition))
+		const FName OptionPoolId = PartRecord.PartType == ESCTDTurretPartType::Weapon
+			? FName(TEXT("BaseWeaponPartOptionTable"))
+			: PartRecord.PartType == ESCTDTurretPartType::Control
+				? FName(TEXT("BaseControlPartOptionTable"))
+				: FName(TEXT("BaseBodyPartOptionTable"));
+		const TArray<FSCTDTurretPartOptionDefinitionRow> PoolOptions = GetOptionsForPool(OptionPoolId, PartRecord.PartType);
+		const FSCTDTurretPartOptionDefinitionRow* FoundOptionDefinition = PoolOptions.FindByPredicate(
+			[&RolledOption](const FSCTDTurretPartOptionDefinitionRow& Candidate)
+			{
+				return Candidate.OptionId == RolledOption.OptionId;
+			});
+		if (!FoundOptionDefinition)
 		{
 			continue;
 		}
+		OptionDefinition = *FoundOptionDefinition;
 
 		FSCTDTurretPartOption LegacyOption;
 		LegacyOption.OptionId = RolledOption.OptionId;

@@ -91,6 +91,7 @@ private:
 	TSharedRef<SWidget> BuildLevelUpCard(int32 CardIndex);
 	TSharedRef<SWidget> BuildDefenseResultOverlay();
 	TSharedRef<SWidget> BuildDefenseDamageTable();
+	TSharedRef<SWidget> BuildDefenseLootTable();
 	TSharedRef<SWidget> BuildDefenseRecordTable();
 	FReply HandleLevelUpCardClicked(int32 CardIndex);
 	FReply HandleDefenseResultConfirmClicked();

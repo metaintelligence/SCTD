@@ -59,6 +59,24 @@ struct FDefenseRecordSummaryRow
 };
 
 USTRUCT(BlueprintType)
+struct FDefenseAcquiredItemSummaryRow
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Defense|Result")
+	FString DisplayName;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Defense|Result")
+	FString PartTypeName;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Defense|Result")
+	FString RarityName;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Defense|Result")
+	int32 OptionCount = 0;
+};
+
+USTRUCT(BlueprintType)
 struct FMonsterSpawnSlot
 {
 	GENERATED_BODY()
@@ -163,6 +181,7 @@ public:
 
 	TArray<FDefenseDamageSummaryRow> GetSortedDamageSummaryRows() const;
 	TArray<FDefenseRecordSummaryRow> GetDefenseRecordSummaryRows() const;
+	TArray<FDefenseAcquiredItemSummaryRow> GetAcquiredItemSummaryRows() const { return AcquiredItemsThisRun; }
 
 	UFUNCTION(BlueprintPure, Category = "Defense|Construction")
 	bool IsConstructionActive() const { return bConstructionActive; }
@@ -274,6 +293,7 @@ private:
 
 	TArray<int32> LevelUpScrapCardOptions;
 	TMap<FString, FDefenseDamageSummaryRow> DamageSummaryByType;
+	TArray<FDefenseAcquiredItemSummaryRow> AcquiredItemsThisRun;
 	FGuid CurrentDefenseRecordId;
 
 	void CacheHexGridManager();

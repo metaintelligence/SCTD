@@ -1171,6 +1171,13 @@ TSharedRef<SWidget> USCTDHUDWidget::BuildDefenseResultOverlay()
 							.Padding(0.0f, 22.0f, 0.0f, 0.0f)
 							.HAlign(HAlign_Center)
 							[
+								BuildDefenseLootTable()
+							]
+							+ SVerticalBox::Slot()
+							.AutoHeight()
+							.Padding(0.0f, 22.0f, 0.0f, 0.0f)
+							.HAlign(HAlign_Center)
+							[
 								BuildDefenseRecordTable()
 							]
 						]
@@ -1254,6 +1261,67 @@ TSharedRef<SWidget> USCTDHUDWidget::BuildDefenseDamageTable()
 		});
 
 	return BuildSCTDResultTableSection(TEXT("DAMAGE STATISTICS"), TableWidget);
+}
+
+TSharedRef<SWidget> USCTDHUDWidget::BuildDefenseLootTable()
+{
+	TArray<FSCTDResultTableColumn> Columns;
+	Columns.Add({ TEXT("ITEM"), 250.0f, ETextJustify::Left });
+	Columns.Add({ TEXT("TYPE"), 82.0f, ETextJustify::Left });
+	Columns.Add({ TEXT("RARITY"), 104.0f, ETextJustify::Left });
+	Columns.Add({ TEXT("OPTIONS"), 78.0f, ETextJustify::Right });
+
+	auto GetRows = [this]() -> TArray<FDefenseAcquiredItemSummaryRow>
+	{
+		const ADefenseManager* CurrentDefenseManager = DefenseManager.Get();
+		return CurrentDefenseManager
+			? CurrentDefenseManager->GetAcquiredItemSummaryRows()
+			: TArray<FDefenseAcquiredItemSummaryRow>();
+	};
+
+	TSharedRef<SWidget> TableWidget = BuildSCTDResultTable(
+		Columns,
+		6,
+		[GetRows](int32 RowIndex, int32 ColumnIndex)
+		{
+			const TArray<FDefenseAcquiredItemSummaryRow> Rows = GetRows();
+			if (Rows.IsEmpty() && RowIndex == 0)
+			{
+				return ColumnIndex == 0 ? FString(TEXT("NO ITEMS ACQUIRED")) : FString(TEXT("-"));
+			}
+			if (!Rows.IsValidIndex(RowIndex))
+			{
+				return FString(TEXT("-"));
+			}
+
+			const FDefenseAcquiredItemSummaryRow& Row = Rows[RowIndex];
+			switch (ColumnIndex)
+			{
+			case 0:
+				return Row.DisplayName.Left(28);
+			case 1:
+				return Row.PartTypeName;
+			case 2:
+				return Row.RarityName;
+			case 3:
+				return FString::FromInt(Row.OptionCount);
+			default:
+				return FString(TEXT("-"));
+			}
+		},
+		[GetRows](int32 RowIndex)
+		{
+			const TArray<FDefenseAcquiredItemSummaryRow> Rows = GetRows();
+			return (Rows.IsEmpty() && RowIndex == 0) || Rows.IsValidIndex(RowIndex)
+				? EVisibility::Visible
+				: EVisibility::Collapsed;
+		},
+		[](int32)
+		{
+			return false;
+		});
+
+	return BuildSCTDResultTableSection(TEXT("ACQUIRED ITEMS"), TableWidget);
 }
 
 TSharedRef<SWidget> USCTDHUDWidget::BuildDefenseRecordTable()
