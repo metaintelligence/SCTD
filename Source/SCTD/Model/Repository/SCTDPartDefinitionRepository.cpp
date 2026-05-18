@@ -118,19 +118,38 @@ TArray<FSCTDTurretPartDefinitionRow> USCTDPartDefinitionRepository::GetPartDefin
 
 bool USCTDPartDefinitionRepository::FindOptionDefinition(FName OptionId, FSCTDTurretPartOptionDefinitionRow& OutDefinition) const
 {
-	if (!OptionTable || OptionId.IsNone())
+	if (OptionId.IsNone())
 	{
 		return false;
 	}
 
-	if (const FSCTDTurretPartOptionDefinitionRow* FoundDefinition = OptionTable->FindRow<FSCTDTurretPartOptionDefinitionRow>(OptionId, PartOptionContext, false))
+	if (OptionTable)
 	{
-		OutDefinition = *FoundDefinition;
-		if (OutDefinition.OptionId.IsNone())
+		if (const FSCTDTurretPartOptionDefinitionRow* FoundDefinition = OptionTable->FindRow<FSCTDTurretPartOptionDefinitionRow>(OptionId, PartOptionContext, false))
 		{
-			OutDefinition.OptionId = OptionId;
+			OutDefinition = *FoundDefinition;
+			if (OutDefinition.OptionId.IsNone())
+			{
+				OutDefinition.OptionId = OptionId;
+			}
+			return true;
 		}
-		return true;
+	}
+
+	for (const TPair<FName, ESCTDTurretPartType> PoolAndType : {
+		TPair<FName, ESCTDTurretPartType>(TEXT("BaseWeaponPartOptionTable"), ESCTDTurretPartType::Weapon),
+		TPair<FName, ESCTDTurretPartType>(TEXT("BaseBodyPartOptionTable"), ESCTDTurretPartType::Base),
+		TPair<FName, ESCTDTurretPartType>(TEXT("BaseControlPartOptionTable"), ESCTDTurretPartType::Control)
+	})
+	{
+		for (const FSCTDTurretPartOptionDefinitionRow& OptionDefinition : GetOptionsForPool(PoolAndType.Key, PoolAndType.Value))
+		{
+			if (OptionDefinition.OptionId == OptionId)
+			{
+				OutDefinition = OptionDefinition;
+				return true;
+			}
+		}
 	}
 
 	return false;
@@ -161,6 +180,9 @@ TArray<FSCTDTurretPartOptionDefinitionRow> USCTDPartDefinitionRepository::GetOpt
 				AddDefault(TEXT("IncreaseAreaRange"), TEXT("AreaAttackRange"), ESCTDPartOptionValueMode::AddFlat, 1, 1, 1, 1, 2, 2, 2, 2);
 				AddDefault(TEXT("IncreaseCriticalChance"), TEXT("CriticalChance"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
 				AddDefault(TEXT("IncreaseCriticalDamage"), TEXT("CriticalDamageMultiplier"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
+				AddDefault(TEXT("ReduceBuildCost"), TEXT("BuildCostReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
+				AddDefault(TEXT("ReduceBuildTime"), TEXT("BuildTimeReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
+				AddDefault(TEXT("ExtraScrapGain"), TEXT("ScrapGainBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
 			}
 			else if (OptionPoolId == TEXT("BaseBodyPartOptionTable"))
 			{
@@ -170,6 +192,9 @@ TArray<FSCTDTurretPartOptionDefinitionRow> USCTDPartDefinitionRepository::GetOpt
 				AddDefault(TEXT("IncreaseAttackSpeed"), TEXT("AttackSpeed"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 20, 25, 20, 30);
 				AddDefault(TEXT("IncreaseCriticalChance"), TEXT("CriticalChance"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
 				AddDefault(TEXT("IncreaseCriticalDamage"), TEXT("CriticalDamageMultiplier"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
+				AddDefault(TEXT("ReduceBuildCost"), TEXT("BuildCostReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
+				AddDefault(TEXT("ReduceBuildTime"), TEXT("BuildTimeReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
+				AddDefault(TEXT("ExtraScrapGain"), TEXT("ScrapGainBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
 			}
 			else if (OptionPoolId == TEXT("BaseControlPartOptionTable"))
 			{
@@ -183,6 +208,9 @@ TArray<FSCTDTurretPartOptionDefinitionRow> USCTDPartDefinitionRepository::GetOpt
 				AddDefault(TEXT("IncreaseCriticalChance"), TEXT("CriticalChance"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
 				AddDefault(TEXT("IncreaseCriticalDamage"), TEXT("CriticalDamageMultiplier"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
 				AddDefault(TEXT("AmplifyStatusChance"), TEXT("StatusEffectChanceMultiplier"), ESCTDPartOptionValueMode::AddPercentOfBase, 10, 20, 10, 25, 15, 25, 20, 30);
+				AddDefault(TEXT("ReduceBuildCost"), TEXT("BuildCostReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
+				AddDefault(TEXT("ReduceBuildTime"), TEXT("BuildTimeReduction"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
+				AddDefault(TEXT("ExtraScrapGain"), TEXT("ScrapGainBonusRatio"), ESCTDPartOptionValueMode::AddPercentOfBase, 5, 10, 5, 10, 5, 15, 10, 20);
 
 				auto AddStatusOption = [&Options, OptionPoolId, PartType](FName OptionId, ESCTDStatusEffectType EffectType, float MinDuration, float MaxDuration, float MinValue, float MaxValue)
 				{
@@ -238,6 +266,64 @@ TArray<FSCTDRolledTurretPartOption> USCTDPartDefinitionRepository::RollOptionsFo
 	TArray<FSCTDTurretPartOptionDefinitionRow> CandidateOptions = GetOptionsForPool(OptionPoolId, PartType);
 	OptionCount = FMath::Clamp(OptionCount, 0, CandidateOptions.Num());
 
+	for (int32 OptionIndex = 0; OptionIndex < OptionCount; ++OptionIndex)
+	{
+		float TotalWeight = 0.0f;
+		for (const FSCTDTurretPartOptionDefinitionRow& CandidateOption : CandidateOptions)
+		{
+			TotalWeight += FMath::Max(0.0f, CandidateOption.Weight);
+		}
+
+		if (TotalWeight <= KINDA_SMALL_NUMBER)
+		{
+			break;
+		}
+
+		float Roll = FMath::FRandRange(0.0f, TotalWeight);
+		int32 SelectedIndex = INDEX_NONE;
+		for (int32 CandidateIndex = 0; CandidateIndex < CandidateOptions.Num(); ++CandidateIndex)
+		{
+			Roll -= FMath::Max(0.0f, CandidateOptions[CandidateIndex].Weight);
+			if (Roll <= 0.0f)
+			{
+				SelectedIndex = CandidateIndex;
+				break;
+			}
+		}
+
+		if (SelectedIndex == INDEX_NONE)
+		{
+			SelectedIndex = CandidateOptions.Num() - 1;
+		}
+
+		const FSCTDTurretPartOptionDefinitionRow SelectedOption = CandidateOptions[SelectedIndex];
+		float MinValue = SelectedOption.MinValue;
+		float MaxValue = SelectedOption.MaxValue;
+		TryGetOptionValueRangeForRarity(SelectedOption, Rarity, MinValue, MaxValue);
+		FSCTDRolledTurretPartOption RolledOption;
+		RolledOption.OptionId = SelectedOption.OptionId;
+		RolledOption.Value = FMath::FRandRange(MinValue, MaxValue);
+		RolledOptions.Add(RolledOption);
+		CandidateOptions.RemoveAt(SelectedIndex);
+	}
+
+	return RolledOptions;
+}
+
+TArray<FSCTDRolledTurretPartOption> USCTDPartDefinitionRepository::RollOptionsForDefinition(const FSCTDTurretPartDefinitionRow& Definition, ESCTDItemRarity Rarity, int32 OptionCount) const
+{
+	TArray<FSCTDTurretPartOptionDefinitionRow> CandidateOptions = GetOptionsForPool(Definition.OptionPoolId, Definition.PartType);
+	if (Definition.PartType == ESCTDTurretPartType::Weapon && !Definition.bCanAreaAttack)
+	{
+		CandidateOptions.RemoveAll([](const FSCTDTurretPartOptionDefinitionRow& OptionDefinition)
+		{
+			return OptionDefinition.OptionId == TEXT("IncreaseAreaRange")
+				|| OptionDefinition.TargetStat == TEXT("AreaAttackRange");
+		});
+	}
+
+	TArray<FSCTDRolledTurretPartOption> RolledOptions;
+	OptionCount = FMath::Clamp(OptionCount, 0, CandidateOptions.Num());
 	for (int32 OptionIndex = 0; OptionIndex < OptionCount; ++OptionIndex)
 	{
 		float TotalWeight = 0.0f;
@@ -349,12 +435,18 @@ bool USCTDPartDefinitionRepository::BuildOwnedPartFromDefinition(FName Definitio
 FSCTDOwnedTurretPartRecord USCTDPartDefinitionRepository::ResolveOwnedPart(const FSCTDOwnedTurretPartRecord& OwnedPartRecord) const
 {
 	FSCTDOwnedTurretPartRecord ResolvedRecord = OwnedPartRecord;
+	bool bResolvedFromDefinition = false;
 	FSCTDTurretPartDefinitionRow Definition;
 	if (FindPartDefinition(OwnedPartRecord.DefinitionId, Definition))
 	{
 		ApplyDefinitionToOwnedPart(Definition, ResolvedRecord);
+		bResolvedFromDefinition = true;
 	}
-	ApplyRolledOptionsToOwnedPart(OwnedPartRecord.RolledOptions, ResolvedRecord);
+
+	if (bResolvedFromDefinition || OwnedPartRecord.AdditionalOptions.Num() == 0)
+	{
+		ApplyRolledOptionsToOwnedPart(OwnedPartRecord.RolledOptions, ResolvedRecord);
+	}
 	return ResolvedRecord;
 }
 
@@ -441,14 +533,20 @@ void USCTDPartDefinitionRepository::ApplyDefinitionToOwnedPart(const FSCTDTurret
 	PartRecord.SelfRepairPerSecond = Definition.SelfRepairPerSecond;
 	PartRecord.MinAttackDamage = Definition.MinAttackDamage;
 	PartRecord.MaxAttackDamage = Definition.MaxAttackDamage;
-	PartRecord.AttackSpeed = Definition.AttackSpeed;
-	PartRecord.AttackRange = Definition.AttackRange;
-	PartRecord.AreaAttackRange = Definition.AreaAttackRange;
-	PartRecord.CriticalChance = Definition.CriticalChance;
+		PartRecord.AttackSpeed = Definition.AttackSpeed;
+		PartRecord.AttackRange = Definition.AttackRange;
+	PartRecord.bCanAreaAttack = Definition.bCanAreaAttack;
+	PartRecord.AreaAttackRange = Definition.bCanAreaAttack ? Definition.AreaAttackRange : 0.0f;
+		PartRecord.CriticalChance = Definition.CriticalChance;
 	PartRecord.CriticalDamageMultiplier = Definition.CriticalDamageMultiplier;
 	PartRecord.AttackAttribute = Definition.AttackAttribute;
 	PartRecord.StatusEffectChances = Definition.StatusEffectChances;
 	PartRecord.StatusEffectSpecs = Definition.StatusEffectSpecs;
+	PartRecord.PhysicalDamageBonusRatio = 0.0f;
+	PartRecord.FireDamageBonusRatio = 0.0f;
+	PartRecord.LightningDamageBonusRatio = 0.0f;
+	PartRecord.FrostDamageBonusRatio = 0.0f;
+	PartRecord.ScrapGainBonusRatio = 0.0f;
 	PartRecord.TargetingAI = Definition.TargetingAI;
 	PartRecord.AIProfileId = StaticEnum<ESCTDTargetingAI>()->GetNameByValue(static_cast<int64>(Definition.TargetingAI));
 	PartRecord.AdditionalOptions.Reset();
@@ -480,9 +578,17 @@ void USCTDPartDefinitionRepository::ApplyRolledOptionsToOwnedPart(const TArray<F
 		{
 			PartRecord.BuildCost += FMath::RoundToInt(RolledOption.Value);
 		}
+		else if (OptionDefinition.TargetStat == TEXT("BuildCostReduction"))
+		{
+			PartRecord.BuildCost = FMath::Max(0, PartRecord.BuildCost - FMath::CeilToInt(static_cast<float>(PartRecord.BuildCost) * EffectiveValue));
+		}
 		else if (OptionDefinition.TargetStat == TEXT("BuildTimeSeconds"))
 		{
 			PartRecord.BuildTimeSeconds += RolledOption.Value;
+		}
+		else if (OptionDefinition.TargetStat == TEXT("BuildTimeReduction"))
+		{
+			PartRecord.BuildTimeSeconds = FMath::Max(0.1f, PartRecord.BuildTimeSeconds * (1.0f - EffectiveValue));
 		}
 		else if (OptionDefinition.TargetStat == TEXT("BaseHealth"))
 		{
@@ -553,6 +659,10 @@ void USCTDPartDefinitionRepository::ApplyRolledOptionsToOwnedPart(const TArray<F
 		else if (OptionDefinition.TargetStat == TEXT("FrostDamageBonusRatio"))
 		{
 			PartRecord.FrostDamageBonusRatio += EffectiveValue;
+		}
+		else if (OptionDefinition.TargetStat == TEXT("ScrapGainBonusRatio"))
+		{
+			PartRecord.ScrapGainBonusRatio += EffectiveValue;
 		}
 		else if (OptionDefinition.TargetStat == TEXT("StatusEffectChanceMultiplier"))
 		{

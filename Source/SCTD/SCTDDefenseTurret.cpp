@@ -125,13 +125,13 @@ void ASCTDDefenseTurret::InitializeFromRecords(const FSCTDPreparedTurretRecord& 
 	MaxAttackDamage = WeaponPart.MaxAttackDamage;
 	AttackSpeed = WeaponPart.AttackSpeed * (1.0f + FMath::Max(0.0f, BasePart.AttackSpeed) + FMath::Max(0.0f, ControlPart.AttackSpeed));
 	AttackRangeTiles = WeaponPart.AttackRange;
-	AreaAttackRangeTiles = WeaponPart.AreaAttackRange;
+	AreaAttackRangeTiles = WeaponPart.bCanAreaAttack ? WeaponPart.AreaAttackRange : 0.0f;
 	CriticalChance = FMath::Clamp(WeaponPart.CriticalChance + BasePart.CriticalChance + ControlPart.CriticalChance, 0.0f, 1.0f);
 	CriticalDamageMultiplier = WeaponPart.CriticalDamageMultiplier + FMath::Max(0.0f, BasePart.CriticalDamageMultiplier - 1.5f) + FMath::Max(0.0f, ControlPart.CriticalDamageMultiplier - 1.5f);
-	PhysicalDamageBonusRatio = WeaponPart.PhysicalDamageBonusRatio + ControlPart.PhysicalDamageBonusRatio;
-	FireDamageBonusRatio = WeaponPart.FireDamageBonusRatio + ControlPart.FireDamageBonusRatio;
-	LightningDamageBonusRatio = WeaponPart.LightningDamageBonusRatio + ControlPart.LightningDamageBonusRatio;
-	FrostDamageBonusRatio = WeaponPart.FrostDamageBonusRatio + ControlPart.FrostDamageBonusRatio;
+	PhysicalDamageBonusRatio = BasePart.PhysicalDamageBonusRatio + WeaponPart.PhysicalDamageBonusRatio + ControlPart.PhysicalDamageBonusRatio;
+	FireDamageBonusRatio = BasePart.FireDamageBonusRatio + WeaponPart.FireDamageBonusRatio + ControlPart.FireDamageBonusRatio;
+	LightningDamageBonusRatio = BasePart.LightningDamageBonusRatio + WeaponPart.LightningDamageBonusRatio + ControlPart.LightningDamageBonusRatio;
+	FrostDamageBonusRatio = BasePart.FrostDamageBonusRatio + WeaponPart.FrostDamageBonusRatio + ControlPart.FrostDamageBonusRatio;
 	AttackAttribute = WeaponPart.AttackAttribute;
 	StatusEffectChances = WeaponPart.StatusEffectChances;
 	StatusEffectSpecs = WeaponPart.StatusEffectSpecs;
@@ -463,25 +463,12 @@ float ASCTDDefenseTurret::RollAttackDamage() const
 	{
 		return 0.0f;
 	}
-	float Damage = FMath::FRandRange(SafeMinDamage, SafeMaxDamage);
-	switch (AttackAttribute)
-	{
-	case ESCTDAttackAttribute::Physical:
-		Damage *= 1.0f + FMath::Max(0.0f, PhysicalDamageBonusRatio);
-		break;
-	case ESCTDAttackAttribute::Fire:
-		Damage *= 1.0f + FMath::Max(0.0f, FireDamageBonusRatio);
-		break;
-	case ESCTDAttackAttribute::Lightning:
-		Damage *= 1.0f + FMath::Max(0.0f, LightningDamageBonusRatio);
-		break;
-	case ESCTDAttackAttribute::Frost:
-		Damage *= 1.0f + FMath::Max(0.0f, FrostDamageBonusRatio);
-		break;
-	default:
-		break;
-	}
-	return Damage;
+	const float BaseDamage = FMath::FRandRange(SafeMinDamage, SafeMaxDamage);
+	const float AdditionalDamageRatio = FMath::Max(0.0f, PhysicalDamageBonusRatio)
+		+ FMath::Max(0.0f, FireDamageBonusRatio)
+		+ FMath::Max(0.0f, LightningDamageBonusRatio)
+		+ FMath::Max(0.0f, FrostDamageBonusRatio);
+	return BaseDamage + (BaseDamage * AdditionalDamageRatio);
 }
 
 float ASCTDDefenseTurret::ApplyCriticalRoll(float DamageAmount) const

@@ -81,15 +81,63 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 		SaveGame->OwnedParts.RemoveAll(IsLegacyMockPart);
 		SaveGame->TurretDecks.Reset();
 	}
-
-	if (PartsRepository->GetOwnedPartCount() > 0)
+	const auto IsSeedPartDefinition = [](const FSCTDOwnedTurretPartRecord& PartRecord)
 	{
-		if (bHasLegacyMockParts)
+		const FString DefinitionId = PartRecord.DefinitionId.ToString();
+		return DefinitionId.StartsWith(TEXT("part_body_"))
+			|| DefinitionId.StartsWith(TEXT("part_weapon_"))
+			|| DefinitionId.StartsWith(TEXT("part_control_"));
+	};
+
+	const auto IsSeedDamageCarrier = [](const FSCTDOwnedTurretPartRecord& PartRecord)
+	{
+		const FString DefinitionId = PartRecord.DefinitionId.ToString();
+		return DefinitionId.StartsWith(TEXT("part_weapon_"))
+			|| DefinitionId.StartsWith(TEXT("part_control_"));
+	};
+
+	const auto HasNonPhysicalDamageBonus = [](const FSCTDOwnedTurretPartRecord& PartRecord)
+	{
+		if (PartRecord.FireDamageBonusRatio > KINDA_SMALL_NUMBER
+			|| PartRecord.LightningDamageBonusRatio > KINDA_SMALL_NUMBER
+			|| PartRecord.FrostDamageBonusRatio > KINDA_SMALL_NUMBER)
 		{
-			UserRepository->Save();
+			return true;
 		}
-		return;
-	}
+
+		const auto IsNonPhysicalDamageOption = [](FName OptionId)
+		{
+			return OptionId == TEXT("FireDamageBonus")
+				|| OptionId == TEXT("LightningDamageBonus")
+				|| OptionId == TEXT("FrostDamageBonus");
+		};
+
+		for (const FSCTDTurretPartOption& Option : PartRecord.AdditionalOptions)
+		{
+			if (IsNonPhysicalDamageOption(Option.OptionId))
+			{
+				return true;
+			}
+		}
+		for (const FSCTDRolledTurretPartOption& Option : PartRecord.RolledOptions)
+		{
+			if (IsNonPhysicalDamageOption(Option.OptionId))
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+
+	const bool bHasSeedDamageCarrier = SaveGame->OwnedParts.ContainsByPredicate(IsSeedDamageCarrier);
+	const bool bHasNonPhysicalSeedDamageBonus = SaveGame->OwnedParts.ContainsByPredicate(
+		[IsSeedDamageCarrier, HasNonPhysicalDamageBonus](const FSCTDOwnedTurretPartRecord& PartRecord)
+		{
+			return IsSeedDamageCarrier(PartRecord) && HasNonPhysicalDamageBonus(PartRecord);
+		});
+	const bool bShouldRerollMissingElementalSeedDamage = bHasSeedDamageCarrier && !bHasNonPhysicalSeedDamageBonus;
+	constexpr int32 CurrentMockSeedVersion = 6;
+	const bool bShouldRerollSeedParts = SaveGame->SaveVersion < CurrentMockSeedVersion || bShouldRerollMissingElementalSeedDamage;
 
 	const FLinearColor LegendaryColor(0.84f, 0.62f, 1.0f, 1.0f);
 	auto AddLegendaryOption = [](FSCTDOwnedTurretPartRecord& PartRecord, FName OptionId, const FText& DisplayName, float Value)
@@ -112,22 +160,62 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 		PartRecord.RarityColor = LegendaryColor;
 	};
 
-	auto ApplyLegendaryMockOptions = [AddLegendaryOption](FSCTDOwnedTurretPartRecord& PartRecord)
+	int32 MockDamageBonusCursor = 1;
+	auto ApplyLegendaryMockOptions = [AddLegendaryOption, &MockDamageBonusCursor](FSCTDOwnedTurretPartRecord& PartRecord)
 	{
 		TArray<int32> CandidateOptionIndexes;
 		const int32 OptionCount = FMath::RandRange(4, 5);
+		auto AddDamageBonusOption = [AddLegendaryOption](FSCTDOwnedTurretPartRecord& TargetPartRecord, int32 DamageBonusIndex, float Ratio)
+		{
+			if (DamageBonusIndex == 0)
+			{
+				TargetPartRecord.PhysicalDamageBonusRatio += Ratio;
+				AddLegendaryOption(TargetPartRecord, TEXT("PhysicalDamageBonus"), FText::FromString(TEXT("Physical Damage +%")), Ratio);
+			}
+			else if (DamageBonusIndex == 1)
+			{
+				TargetPartRecord.FireDamageBonusRatio += Ratio;
+				AddLegendaryOption(TargetPartRecord, TEXT("FireDamageBonus"), FText::FromString(TEXT("Fire Damage +%")), Ratio);
+			}
+			else if (DamageBonusIndex == 2)
+			{
+				TargetPartRecord.LightningDamageBonusRatio += Ratio;
+				AddLegendaryOption(TargetPartRecord, TEXT("LightningDamageBonus"), FText::FromString(TEXT("Lightning Damage +%")), Ratio);
+			}
+			else
+			{
+				TargetPartRecord.FrostDamageBonusRatio += Ratio;
+				AddLegendaryOption(TargetPartRecord, TEXT("FrostDamageBonus"), FText::FromString(TEXT("Frost Damage +%")), Ratio);
+			}
+		};
 
 		if (PartRecord.PartType == ESCTDTurretPartType::Base)
 		{
-			CandidateOptionIndexes = { 0, 1, 2, 3, 4, 5 };
+			CandidateOptionIndexes = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
 		}
 		else if (PartRecord.PartType == ESCTDTurretPartType::Weapon)
 		{
-			CandidateOptionIndexes = { 0, 1, 2, 3, 4 };
+			CandidateOptionIndexes = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+			if (!PartRecord.bCanAreaAttack)
+			{
+				CandidateOptionIndexes.Remove(6);
+			}
 		}
 		else
 		{
-			CandidateOptionIndexes = { 0, 1, 2, 3, 4 };
+			CandidateOptionIndexes = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+		}
+
+		int32 RemainingOptionCount = OptionCount;
+		if (PartRecord.PartType == ESCTDTurretPartType::Weapon || PartRecord.PartType == ESCTDTurretPartType::Control)
+		{
+			const int32 ForcedDamageBonusIndex = MockDamageBonusCursor % 4;
+			++MockDamageBonusCursor;
+			AddDamageBonusOption(PartRecord, ForcedDamageBonusIndex, FMath::FRandRange(0.20f, 0.30f));
+
+			const int32 CandidateIndexToRemove = PartRecord.PartType == ESCTDTurretPartType::Weapon ? ForcedDamageBonusIndex + 1 : ForcedDamageBonusIndex;
+			CandidateOptionIndexes.Remove(CandidateIndexToRemove);
+			--RemainingOptionCount;
 		}
 
 		for (int32 Index = CandidateOptionIndexes.Num() - 1; Index > 0; --Index)
@@ -136,7 +224,7 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 			CandidateOptionIndexes.Swap(Index, SwapIndex);
 		}
 
-		for (int32 Index = 0; Index < FMath::Min(OptionCount, CandidateOptionIndexes.Num()); ++Index)
+		for (int32 Index = 0; Index < FMath::Min(RemainingOptionCount, CandidateOptionIndexes.Num()); ++Index)
 		{
 			const int32 OptionIndex = CandidateOptionIndexes[Index];
 			const float Ratio = FMath::FRandRange(0.20f, 0.30f);
@@ -148,31 +236,40 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 				else if (OptionIndex == 3) { PartRecord.AttackSpeed += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseAttackSpeed"), FText::FromString(TEXT("Attack Speed +%")), Ratio); }
 				else if (OptionIndex == 4) { PartRecord.CriticalChance += FMath::FRandRange(0.10f, 0.20f); AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalChance"), FText::FromString(TEXT("Critical Chance +")), PartRecord.CriticalChance); }
 				else if (OptionIndex == 5) { PartRecord.CriticalDamageMultiplier += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalDamage"), FText::FromString(TEXT("Critical Damage +")), Ratio); }
+				else if (OptionIndex == 6) { const int32 Reduction = FMath::CeilToInt(PartRecord.BuildCost * Ratio); PartRecord.BuildCost = FMath::Max(0, PartRecord.BuildCost - Reduction); AddLegendaryOption(PartRecord, TEXT("ReduceBuildCost"), FText::FromString(TEXT("Build Cost -%")), Ratio); }
+				else if (OptionIndex == 7) { PartRecord.BuildTimeSeconds = FMath::Max(0.1f, PartRecord.BuildTimeSeconds * (1.0f - Ratio)); AddLegendaryOption(PartRecord, TEXT("ReduceBuildTime"), FText::FromString(TEXT("Build Time -%")), Ratio); }
+				else if (OptionIndex == 8) { PartRecord.ScrapGainBonusRatio += Ratio; AddLegendaryOption(PartRecord, TEXT("ExtraScrapGain"), FText::FromString(TEXT("Scrap Gain +%")), Ratio); }
 			}
 			else if (PartRecord.PartType == ESCTDTurretPartType::Weapon)
 			{
 				if (OptionIndex == 0) { PartRecord.AttackRange += 2.0f; AddLegendaryOption(PartRecord, TEXT("IncreaseAttackRange"), FText::FromString(TEXT("Range +2")), 2.0f); }
-				else if (OptionIndex == 1) { PartRecord.PhysicalDamageBonusRatio += Ratio; AddLegendaryOption(PartRecord, TEXT("PhysicalDamageBonus"), FText::FromString(TEXT("Physical Damage +%")), Ratio); }
-				else if (OptionIndex == 2) { PartRecord.AttackSpeed *= 1.0f + Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseAttackSpeed"), FText::FromString(TEXT("Attack Speed +%")), Ratio); }
-				else if (OptionIndex == 3) { PartRecord.AreaAttackRange += 2.0f; AddLegendaryOption(PartRecord, TEXT("IncreaseAreaRange"), FText::FromString(TEXT("Area +2")), 2.0f); }
-				else if (OptionIndex == 4) { PartRecord.CriticalChance += FMath::FRandRange(0.10f, 0.20f); AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalChance"), FText::FromString(TEXT("Critical Chance +")), PartRecord.CriticalChance); }
+				else if (OptionIndex >= 1 && OptionIndex <= 4) { AddDamageBonusOption(PartRecord, OptionIndex - 1, Ratio); }
+				else if (OptionIndex == 5) { PartRecord.AttackSpeed *= 1.0f + Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseAttackSpeed"), FText::FromString(TEXT("Attack Speed +%")), Ratio); }
+				else if (OptionIndex == 6 && PartRecord.bCanAreaAttack) { PartRecord.AreaAttackRange += 2.0f; AddLegendaryOption(PartRecord, TEXT("IncreaseAreaRange"), FText::FromString(TEXT("Area +2")), 2.0f); }
+				else if (OptionIndex == 7) { PartRecord.CriticalChance += FMath::FRandRange(0.10f, 0.20f); AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalChance"), FText::FromString(TEXT("Critical Chance +")), PartRecord.CriticalChance); }
+				else if (OptionIndex == 8) { const int32 Reduction = FMath::CeilToInt(PartRecord.BuildCost * Ratio); PartRecord.BuildCost = FMath::Max(0, PartRecord.BuildCost - Reduction); AddLegendaryOption(PartRecord, TEXT("ReduceBuildCost"), FText::FromString(TEXT("Build Cost -%")), Ratio); }
+				else if (OptionIndex == 9) { PartRecord.BuildTimeSeconds = FMath::Max(0.1f, PartRecord.BuildTimeSeconds * (1.0f - Ratio)); AddLegendaryOption(PartRecord, TEXT("ReduceBuildTime"), FText::FromString(TEXT("Build Time -%")), Ratio); }
+				else if (OptionIndex == 10) { PartRecord.ScrapGainBonusRatio += Ratio; AddLegendaryOption(PartRecord, TEXT("ExtraScrapGain"), FText::FromString(TEXT("Scrap Gain +%")), Ratio); }
 			}
 			else
 			{
-				if (OptionIndex == 0) { PartRecord.PhysicalDamageBonusRatio += Ratio; AddLegendaryOption(PartRecord, TEXT("PhysicalDamageBonus"), FText::FromString(TEXT("Physical Damage +%")), Ratio); }
-				else if (OptionIndex == 1) { PartRecord.BaseHealth += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseHealth"), FText::FromString(TEXT("Health +%")), Ratio); }
-				else if (OptionIndex == 2) { PartRecord.Defense += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseDefense"), FText::FromString(TEXT("Defense +%")), Ratio); }
-				else if (OptionIndex == 3) { PartRecord.CriticalChance += FMath::FRandRange(0.10f, 0.20f); AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalChance"), FText::FromString(TEXT("Critical Chance +")), PartRecord.CriticalChance); }
-				else if (OptionIndex == 4) { PartRecord.CriticalDamageMultiplier += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalDamage"), FText::FromString(TEXT("Critical Damage +")), Ratio); }
+				if (OptionIndex >= 0 && OptionIndex <= 3) { AddDamageBonusOption(PartRecord, OptionIndex, Ratio); }
+				else if (OptionIndex == 4) { PartRecord.BaseHealth += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseHealth"), FText::FromString(TEXT("Health +%")), Ratio); }
+				else if (OptionIndex == 5) { PartRecord.Defense += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseDefense"), FText::FromString(TEXT("Defense +%")), Ratio); }
+				else if (OptionIndex == 6) { PartRecord.CriticalChance += FMath::FRandRange(0.10f, 0.20f); AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalChance"), FText::FromString(TEXT("Critical Chance +")), PartRecord.CriticalChance); }
+				else if (OptionIndex == 7) { PartRecord.CriticalDamageMultiplier += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalDamage"), FText::FromString(TEXT("Critical Damage +")), Ratio); }
+				else if (OptionIndex == 8) { const int32 Reduction = FMath::CeilToInt(PartRecord.BuildCost * Ratio); PartRecord.BuildCost = FMath::Max(0, PartRecord.BuildCost - Reduction); AddLegendaryOption(PartRecord, TEXT("ReduceBuildCost"), FText::FromString(TEXT("Build Cost -%")), Ratio); }
+				else if (OptionIndex == 9) { PartRecord.BuildTimeSeconds = FMath::Max(0.1f, PartRecord.BuildTimeSeconds * (1.0f - Ratio)); AddLegendaryOption(PartRecord, TEXT("ReduceBuildTime"), FText::FromString(TEXT("Build Time -%")), Ratio); }
+				else if (OptionIndex == 10) { PartRecord.ScrapGainBonusRatio += Ratio; AddLegendaryOption(PartRecord, TEXT("ExtraScrapGain"), FText::FromString(TEXT("Scrap Gain +%")), Ratio); }
 			}
 		}
 	};
 
-	auto AddPart = [PartsRepository, MarkLegendary, ApplyLegendaryMockOptions](FSCTDOwnedTurretPartRecord PartRecord)
+	auto BuildLegendaryPart = [MarkLegendary, ApplyLegendaryMockOptions](FSCTDOwnedTurretPartRecord PartRecord)
 	{
 		MarkLegendary(PartRecord);
 		ApplyLegendaryMockOptions(PartRecord);
-		PartsRepository->AddPart(PartRecord);
+		return PartRecord;
 	};
 
 	auto MakeBasePart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, ESCTDTurretMountType MountType, float Health, float Defense, float SelfRepair, int32 BuildCost, float BuildTime)
@@ -191,7 +288,7 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 		return PartRecord;
 	};
 
-	auto MakeWeaponPart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, ESCTDTurretMountType MountType, float MinDamage, float MaxDamage, float AttackSpeed, float AttackRange, float AreaRange, float CriticalChance, float CriticalDamageBonus, float StatusChance, int32 BuildCost, float BuildTime)
+	auto MakeWeaponPart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, ESCTDTurretMountType MountType, float MinDamage, float MaxDamage, float AttackSpeed, float AttackRange, float AreaRange, bool bCanAreaAttack, float CriticalChance, float CriticalDamageBonus, float StatusChance, int32 BuildCost, float BuildTime)
 	{
 		FSCTDOwnedTurretPartRecord PartRecord;
 		PartRecord.DefinitionId = DefinitionId;
@@ -203,7 +300,8 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 		PartRecord.AttackAttribute = ESCTDAttackAttribute::Physical;
 		PartRecord.AttackSpeed = AttackSpeed;
 		PartRecord.AttackRange = AttackRange;
-		PartRecord.AreaAttackRange = AreaRange;
+		PartRecord.bCanAreaAttack = bCanAreaAttack;
+		PartRecord.AreaAttackRange = bCanAreaAttack ? AreaRange : 0.0f;
 		PartRecord.CriticalChance = CriticalChance;
 		PartRecord.CriticalDamageMultiplier = 1.0f + CriticalDamageBonus;
 		PartRecord.BuildCost = BuildCost;
@@ -225,20 +323,55 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 		return PartRecord;
 	};
 
-	AddPart(MakeBasePart(TEXT("part_body_pylon"), TEXT("PYLON"), ESCTDTurretMountType::Tower, 400.0f, 10.0f, 1.0f, 100, 5.0f));
-	AddPart(MakeBasePart(TEXT("part_body_quirass"), TEXT("QUIRASS"), ESCTDTurretMountType::Arm, 600.0f, 20.0f, 2.0f, 100, 2.0f));
-	AddPart(MakeBasePart(TEXT("part_body_gunstock"), TEXT("GUNSTOCK"), ESCTDTurretMountType::Cannon, 200.0f, 10.0f, 1.0f, 100, 3.0f));
+	TArray<FSCTDOwnedTurretPartRecord> SeedParts;
+	SeedParts.Add(BuildLegendaryPart(MakeBasePart(TEXT("part_body_pylon"), TEXT("PYLON"), ESCTDTurretMountType::Tower, 400.0f, 10.0f, 1.0f, 100, 5.0f)));
+	SeedParts.Add(BuildLegendaryPart(MakeBasePart(TEXT("part_body_quirass"), TEXT("QUIRASS"), ESCTDTurretMountType::Arm, 600.0f, 20.0f, 2.0f, 100, 2.0f)));
+	SeedParts.Add(BuildLegendaryPart(MakeBasePart(TEXT("part_body_gunstock"), TEXT("GUNSTOCK"), ESCTDTurretMountType::Cannon, 200.0f, 10.0f, 1.0f, 100, 3.0f)));
 
-	AddPart(MakeWeaponPart(TEXT("part_weapon_mortar"), TEXT("MORTAR"), ESCTDTurretMountType::Tower, 10.0f, 20.0f, 0.33f, 5.0f, 1.0f, 0.10f, 0.50f, 0.30f, 100, 5.0f));
-	AddPart(MakeWeaponPart(TEXT("part_weapon_minigun"), TEXT("MINIGUN"), ESCTDTurretMountType::Cannon, 4.0f, 6.0f, 3.0f, 3.0f, 0.0f, 0.20f, 0.50f, 0.10f, 100, 3.0f));
-	AddPart(MakeWeaponPart(TEXT("part_weapon_axe"), TEXT("AXE"), ESCTDTurretMountType::Arm, 9.0f, 11.0f, 1.0f, 1.0f, 0.0f, 0.20f, 0.50f, 0.20f, 100, 2.0f));
+	SeedParts.Add(BuildLegendaryPart(MakeWeaponPart(TEXT("part_weapon_mortar"), TEXT("MORTAR"), ESCTDTurretMountType::Tower, 10.0f, 20.0f, 0.33f, 5.0f, 1.0f, false, 0.10f, 0.50f, 0.30f, 100, 5.0f)));
+	SeedParts.Add(BuildLegendaryPart(MakeWeaponPart(TEXT("part_weapon_minigun"), TEXT("MINIGUN"), ESCTDTurretMountType::Cannon, 4.0f, 6.0f, 3.0f, 3.0f, 0.0f, false, 0.20f, 0.50f, 0.10f, 100, 3.0f)));
+	SeedParts.Add(BuildLegendaryPart(MakeWeaponPart(TEXT("part_weapon_axe"), TEXT("AXE"), ESCTDTurretMountType::Arm, 9.0f, 11.0f, 1.0f, 1.0f, 0.0f, false, 0.20f, 0.50f, 0.20f, 100, 2.0f)));
 
-	AddPart(MakeControlPart(TEXT("part_control_closer"), TEXT("CLOSER"), ESCTDTargetingAI::Closer));
-	AddPart(MakeControlPart(TEXT("part_control_sniper"), TEXT("SNIPER"), ESCTDTargetingAI::Sniper));
-	AddPart(MakeControlPart(TEXT("part_control_greedy"), TEXT("GREEDY"), ESCTDTargetingAI::Greedy));
-	AddPart(MakeControlPart(TEXT("part_control_potato"), TEXT("POTATO"), ESCTDTargetingAI::Potato));
-	AddPart(MakeControlPart(TEXT("part_control_chaser"), TEXT("CHASER"), ESCTDTargetingAI::Chaser));
-	AddPart(MakeControlPart(TEXT("part_control_revenge"), TEXT("REVENGE"), ESCTDTargetingAI::Revenge));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_closer"), TEXT("CLOSER"), ESCTDTargetingAI::Closer)));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_sniper"), TEXT("SNIPER"), ESCTDTargetingAI::Sniper)));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_greedy"), TEXT("GREEDY"), ESCTDTargetingAI::Greedy)));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_potato"), TEXT("POTATO"), ESCTDTargetingAI::Potato)));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_chaser"), TEXT("CHASER"), ESCTDTargetingAI::Chaser)));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_revenge"), TEXT("REVENGE"), ESCTDTargetingAI::Revenge)));
+
+	if (PartsRepository->GetOwnedPartCount() > 0 && !bShouldRerollSeedParts)
+	{
+		if (bHasLegacyMockParts)
+		{
+			UserRepository->Save();
+		}
+		return;
+	}
+
+	if (bShouldRerollSeedParts)
+	{
+		for (FSCTDOwnedTurretPartRecord& SeedPart : SeedParts)
+		{
+			if (const FSCTDOwnedTurretPartRecord* ExistingPart = SaveGame->OwnedParts.FindByPredicate([&SeedPart](const FSCTDOwnedTurretPartRecord& PartRecord)
+			{
+				return PartRecord.DefinitionId == SeedPart.DefinitionId;
+			}))
+			{
+				SeedPart.InstanceId = ExistingPart->InstanceId;
+			}
+		}
+		SaveGame->OwnedParts.RemoveAll(IsSeedPartDefinition);
+	}
+
+	if (PartsRepository->GetOwnedPartCount() == 0 || bShouldRerollSeedParts)
+	{
+		for (const FSCTDOwnedTurretPartRecord& SeedPart : SeedParts)
+		{
+			PartsRepository->AddPart(SeedPart);
+		}
+	}
+
+	SaveGame->SaveVersion = CurrentMockSeedVersion;
 
 	UserRepository->Save();
 }

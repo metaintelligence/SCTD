@@ -17,6 +17,6 @@ private:
 	TSharedRef<SWidget> BuildPlayerStatusPanel();
 
 	FReply HandleDefenseClicked();
-	FReply HandleStatClicked();
+	FReply HandleInventoryClicked();
 	FReply HandleLabClicked();
 };

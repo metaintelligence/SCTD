@@ -55,6 +55,7 @@ FSCTDTurretFinalStats USCTDTurret::GetFinalStats() const
 		FinalStats.AttackSpeed = WeaponPart->AttackSpeed;
 		FinalStats.AttackRange = WeaponPart->AttackRange;
 		FinalStats.AreaAttackRange = WeaponPart->AreaAttackRange;
+		FinalStats.bCanAreaAttack = WeaponPart->bCanAreaAttack;
 		FinalStats.CriticalChance = WeaponPart->CriticalChance;
 		FinalStats.CriticalDamageMultiplier = WeaponPart->CriticalDamageMultiplier;
 		FinalStats.AttackAttribute = WeaponPart->AttackAttribute;

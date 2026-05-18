@@ -49,6 +49,9 @@ struct FSCTDTurretFinalStats
 	float AreaAttackRange = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
+	bool bCanAreaAttack = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
 	float CriticalChance = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")

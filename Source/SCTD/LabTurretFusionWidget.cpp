@@ -33,6 +33,116 @@ namespace
 		}
 		return FLinearColor(0.20f, 0.72f, 1.0f, 1.0f);
 	}
+
+	bool HasDamageBonus(float Ratio)
+	{
+		return Ratio > KINDA_SMALL_NUMBER;
+	}
+
+	float SumOptionValue(const FSCTDOwnedTurretPartRecord& PartRecord, FName OptionId)
+	{
+		float Sum = 0.0f;
+		for (const FSCTDTurretPartOption& Option : PartRecord.AdditionalOptions)
+		{
+			if (Option.OptionId == OptionId)
+			{
+				Sum += Option.Value;
+			}
+		}
+		return Sum;
+	}
+
+	FString BuildFlatFormula(float CurrentValue, float Delta)
+	{
+		if (FMath::Abs(Delta) <= KINDA_SMALL_NUMBER)
+		{
+			return FString::Printf(TEXT("%.0f"), CurrentValue);
+		}
+
+		return FString::Printf(TEXT("%.0f (%.0f+%.0f)"), CurrentValue, CurrentValue - Delta, Delta);
+	}
+
+	FString BuildRatioFormula(float CurrentValue, float Ratio)
+	{
+		if (Ratio <= KINDA_SMALL_NUMBER)
+		{
+			return FString::Printf(TEXT("%.2f"), CurrentValue);
+		}
+
+		const float BaseValue = CurrentValue / (1.0f + Ratio);
+		return FString::Printf(TEXT("%.2f (%.2f+%.2f)"), CurrentValue, BaseValue, CurrentValue - BaseValue);
+	}
+
+	FString FormatStatNumber(float Value, int32 DecimalPlaces)
+	{
+		return DecimalPlaces > 0
+			? FString::Printf(TEXT("%.*f"), DecimalPlaces, Value)
+			: FString::Printf(TEXT("%.0f"), Value);
+	}
+
+	struct FLabPartBaseline
+	{
+		bool bValid = false;
+		float BaseHealth = 0.0f;
+		float Defense = 0.0f;
+		float SelfRepairPerSecond = 0.0f;
+		int32 BuildCost = 0;
+		float BuildTimeSeconds = 0.0f;
+	};
+
+	bool TryGetLabPartBaseline(const FSCTDOwnedTurretPartRecord& PartRecord, FLabPartBaseline& OutBaseline)
+	{
+		OutBaseline = FLabPartBaseline();
+		if (PartRecord.DefinitionId == TEXT("part_body_pylon"))
+		{
+			OutBaseline = { true, 400.0f, 10.0f, 1.0f, 100, 5.0f };
+		}
+		else if (PartRecord.DefinitionId == TEXT("part_body_quirass"))
+		{
+			OutBaseline = { true, 600.0f, 20.0f, 2.0f, 100, 2.0f };
+		}
+		else if (PartRecord.DefinitionId == TEXT("part_body_gunstock"))
+		{
+			OutBaseline = { true, 200.0f, 10.0f, 1.0f, 100, 3.0f };
+		}
+		else if (PartRecord.DefinitionId == TEXT("part_weapon_mortar"))
+		{
+			OutBaseline.bValid = true;
+			OutBaseline.BuildCost = 100;
+			OutBaseline.BuildTimeSeconds = 5.0f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("part_weapon_minigun"))
+		{
+			OutBaseline.bValid = true;
+			OutBaseline.BuildCost = 100;
+			OutBaseline.BuildTimeSeconds = 3.0f;
+		}
+		else if (PartRecord.DefinitionId == TEXT("part_weapon_axe"))
+		{
+			OutBaseline.bValid = true;
+			OutBaseline.BuildCost = 100;
+			OutBaseline.BuildTimeSeconds = 2.0f;
+		}
+		else if (PartRecord.DefinitionId.ToString().StartsWith(TEXT("part_control_")))
+		{
+			OutBaseline.bValid = true;
+			OutBaseline.BuildCost = 0;
+			OutBaseline.BuildTimeSeconds = 0.0f;
+		}
+		return OutBaseline.bValid;
+	}
+
+	int32 GetBaselineBuildCost(const FSCTDOwnedTurretPartRecord& PartRecord)
+	{
+		FLabPartBaseline Baseline;
+		return TryGetLabPartBaseline(PartRecord, Baseline) ? Baseline.BuildCost : PartRecord.BuildCost;
+	}
+
+	float GetBaselineBuildTime(const FSCTDOwnedTurretPartRecord& PartRecord)
+	{
+		FLabPartBaseline Baseline;
+		return TryGetLabPartBaseline(PartRecord, Baseline) ? Baseline.BuildTimeSeconds : PartRecord.BuildTimeSeconds;
+	}
 }
 
 void ULabTurretFusionWidget::SetUserRepository(USCTDUserRepository* NewUserRepository)
@@ -98,7 +208,26 @@ TSharedRef<SWidget> ULabTurretFusionWidget::RebuildWidget()
 					BuildPartsPanel()
 				]
 			]
+		]
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Top)
+		[
+			SAssignNew(HoverCardBox, SBox)
+			.Visibility(EVisibility::Collapsed)
 		];
+}
+
+void ULabTurretFusionWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+
+	if (!HoverCardBox || !HoveredPart.IsSet())
+	{
+		return;
+	}
+
+	HoverCardBox->SetRenderTransform(FSlateRenderTransform(HoverCardPosition));
 }
 
 TSharedRef<SWidget> ULabTurretFusionWidget::BuildHeader()
@@ -491,7 +620,8 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPartTab(const FString& Label, E
 
 TSharedRef<SWidget> ULabTurretFusionWidget::BuildPartItem(const FSCTDOwnedTurretPartRecord& PartRecord)
 {
-	const FLinearColor AccentColor = PartAccentColor(PartRecord.PartType);
+	const FLinearColor TypeAccentColor = PartAccentColor(PartRecord.PartType);
+	const FLinearColor RarityColor = PartRecord.RarityColor.A > KINDA_SMALL_NUMBER ? PartRecord.RarityColor : FLinearColor::White;
 	FString StatLine;
 	if (PartRecord.PartType == ESCTDTurretPartType::Base)
 	{
@@ -509,38 +639,46 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPartItem(const FSCTDOwnedTurret
 	return SNew(SBox)
 		.HeightOverride(88.0f)
 		[
-			SNew(SBorder)
-			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-			.BorderBackgroundColor(AccentColor.CopyWithNewOpacity(0.50f))
-			.Padding(1.0f)
-			.OnMouseDoubleClick(FPointerEventHandler::CreateUObject(this, &ULabTurretFusionWidget::HandlePartItemDoubleClicked, PartRecord))
+			SNew(SButton)
+			.ButtonColorAndOpacity(FLinearColor::White)
+			.ContentPadding(0.0f)
+			.OnHovered(FSimpleDelegate::CreateUObject(this, &ULabTurretFusionWidget::HandlePartHovered, PartRecord))
+			.OnUnhovered(FSimpleDelegate::CreateUObject(this, &ULabTurretFusionWidget::HandlePartUnhovered))
 			[
 				SNew(SBorder)
 				.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
-				.BorderBackgroundColor(FLinearColor(0.018f, 0.018f, 0.022f, 0.96f))
-				.Padding(FMargin(10.0f))
+				.BorderBackgroundColor(RarityColor.CopyWithNewOpacity(0.50f))
+				.Padding(1.0f)
+				.OnMouseMove(FPointerEventHandler::CreateUObject(this, &ULabTurretFusionWidget::HandlePartMouseMove, PartRecord))
+				.OnMouseDoubleClick(FPointerEventHandler::CreateUObject(this, &ULabTurretFusionWidget::HandlePartItemDoubleClicked, PartRecord))
 				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()
+					SNew(SBorder)
+					.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+					.BorderBackgroundColor(FLinearColor(0.018f, 0.018f, 0.022f, 0.96f))
+					.Padding(FMargin(10.0f))
 					[
-						SNew(SSCTDMarqueeText)
-						.Text(FText::FromString(PartRecord.DisplayName))
-						.ColorAndOpacity(FLinearColor(0.92f, 0.82f, 0.96f, 1.0f))
-						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
-					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 6.0f, 0.0f, 0.0f)
-					[
-						SNew(SSCTDMarqueeText)
-						.Text(FText::FromString(StatLine))
-						.ColorAndOpacity(AccentColor)
-						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
-					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 0.0f)
-					[
-						SNew(SSCTDMarqueeText)
-						.Text(FText::FromString(FString::Printf(TEXT("COST %d / TIME %.1fs"), PartRecord.BuildCost, PartRecord.BuildTimeSeconds)))
-						.ColorAndOpacity(FLinearColor(0.58f, 0.52f, 0.62f, 1.0f))
-						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight()
+						[
+							SNew(SSCTDMarqueeText)
+							.Text(FText::FromString(PartRecord.DisplayName))
+							.ColorAndOpacity(RarityColor)
+							.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+						]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 6.0f, 0.0f, 0.0f)
+						[
+							SNew(SSCTDMarqueeText)
+							.Text(FText::FromString(StatLine))
+							.ColorAndOpacity(TypeAccentColor)
+							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+						]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 0.0f)
+						[
+							SNew(SSCTDMarqueeText)
+							.Text(FText::FromString(FString::Printf(TEXT("COST %d / TIME %.1fs"), PartRecord.BuildCost, PartRecord.BuildTimeSeconds)))
+							.ColorAndOpacity(FLinearColor(0.58f, 0.52f, 0.62f, 1.0f))
+							.Font(FCoreStyle::GetDefaultFontStyle("Regular", 9))
+						]
 					]
 				]
 			]
@@ -567,6 +705,219 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildEmptyPanel(const FString& Label
 		];
 }
 
+TSharedRef<SWidget> ULabTurretFusionWidget::BuildStatsSectionTitle(const FString& Label) const
+{
+	return SNew(SSCTDMarqueeText)
+		.Text(FText::FromString(Label))
+		.ColorAndOpacity(FLinearColor(0.70f, 0.82f, 0.92f, 1.0f))
+		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 11))
+		.Justification(ETextJustify::Left);
+}
+
+TSharedRef<SWidget> ULabTurretFusionWidget::BuildStatsRow(const FString& Label, const FString& Value, const FLinearColor& ValueColor) const
+{
+	return SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth()
+		[
+			SNew(SBox)
+			.WidthOverride(108.0f)
+			[
+				SNew(SSCTDMarqueeText)
+				.Text(FText::FromString(Label))
+				.ColorAndOpacity(FLinearColor(0.62f, 0.66f, 0.72f, 1.0f))
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+				.Justification(ETextJustify::Left)
+			]
+		]
+		+ SHorizontalBox::Slot().FillWidth(1.0f)
+		[
+			SNew(SSCTDMarqueeText)
+			.Text(FText::FromString(Value))
+			.ColorAndOpacity(ValueColor)
+			.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+			.Justification(ETextJustify::Left)
+			.TextLengthHandling(ESCTDTextLengthHandling::RenderOverflow)
+		];
+}
+
+TSharedRef<SWidget> ULabTurretFusionWidget::BuildStatsFormulaRow(const FString& Label, float CurrentValue, float BaseValue, const FString& Suffix, int32 DecimalPlaces) const
+{
+	const FLinearColor BaseColor(0.82f, 0.86f, 0.96f, 1.0f);
+	const FLinearColor ChangedColor(0.34f, 0.48f, 1.0f, 1.0f);
+	const float Delta = CurrentValue - BaseValue;
+	const bool bChanged = FMath::Abs(Delta) > 0.01f;
+	const FString CurrentText = FormatStatNumber(CurrentValue, DecimalPlaces);
+	const FString BaseText = FormatStatNumber(BaseValue, DecimalPlaces);
+	const FString DeltaText = FormatStatNumber(FMath::Abs(Delta), DecimalPlaces);
+
+	return SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth()
+		[
+			SNew(SBox)
+			.WidthOverride(108.0f)
+			[
+				SNew(SSCTDMarqueeText)
+				.Text(FText::FromString(Label))
+				.ColorAndOpacity(FLinearColor(0.62f, 0.66f, 0.72f, 1.0f))
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+				.Justification(ETextJustify::Left)
+			]
+		]
+		+ SHorizontalBox::Slot().FillWidth(1.0f)
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(SSCTDMarqueeText)
+				.Text(FText::FromString(CurrentText))
+				.ColorAndOpacity(bChanged ? ChangedColor : BaseColor)
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+				.Justification(ETextJustify::Left)
+			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(SSCTDMarqueeText)
+				.Text(FText::FromString(bChanged ? TEXT(" (") : TEXT("")))
+				.ColorAndOpacity(ChangedColor)
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+				.Justification(ETextJustify::Left)
+			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(SSCTDMarqueeText)
+				.Text(FText::FromString(bChanged ? BaseText : TEXT("")))
+				.ColorAndOpacity(BaseColor)
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+				.Justification(ETextJustify::Left)
+			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(SSCTDMarqueeText)
+				.Text(FText::FromString(bChanged ? FString::Printf(TEXT("%s%s)"), Delta >= 0.0f ? TEXT("+") : TEXT("-"), *DeltaText) : TEXT("")))
+				.ColorAndOpacity(ChangedColor)
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+				.Justification(ETextJustify::Left)
+			]
+			+ SHorizontalBox::Slot().AutoWidth()
+			[
+				SNew(SSCTDMarqueeText)
+				.Text(FText::FromString(Suffix))
+				.ColorAndOpacity(BaseColor)
+				.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+				.Justification(ETextJustify::Left)
+			]
+		];
+}
+
+TSharedRef<SWidget> ULabTurretFusionWidget::BuildAttributeDamageRow(const FString& Label, float MinBaseDamage, float MaxBaseDamage, float Ratio) const
+{
+	const float ClampedRatio = FMath::Max(0.0f, Ratio);
+	return BuildStatsRow(
+		Label,
+		FString::Printf(TEXT("+%.1f-%.1f (%.0f%%)"), MinBaseDamage * ClampedRatio, MaxBaseDamage * ClampedRatio, ClampedRatio * 100.0f),
+		FLinearColor(0.34f, 0.48f, 1.0f, 1.0f));
+}
+
+TSharedRef<SWidget> ULabTurretFusionWidget::BuildItemViewerCard(const FSCTDOwnedTurretPartRecord& PartRecord) const
+{
+	TSharedRef<SVerticalBox> BasicStatsBox = SNew(SVerticalBox);
+	if (PartRecord.PartType == ESCTDTurretPartType::Base)
+	{
+		BasicStatsBox->AddSlot().AutoHeight()[BuildItemViewerLine(FString::Printf(TEXT("Health: %.0f"), PartRecord.BaseHealth), FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))];
+		BasicStatsBox->AddSlot().AutoHeight()[BuildItemViewerLine(FString::Printf(TEXT("Defense: %.0f"), PartRecord.Defense), FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))];
+		BasicStatsBox->AddSlot().AutoHeight()[BuildItemViewerLine(FString::Printf(TEXT("Repair: %.1f / sec"), PartRecord.SelfRepairPerSecond), FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))];
+		BasicStatsBox->AddSlot().AutoHeight()[BuildItemViewerLine(FString::Printf(TEXT("Build: %d / %.1fs"), PartRecord.BuildCost, PartRecord.BuildTimeSeconds), FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))];
+	}
+	else if (PartRecord.PartType == ESCTDTurretPartType::Weapon)
+	{
+		BasicStatsBox->AddSlot().AutoHeight()[BuildItemViewerLine(FString::Printf(TEXT("Damage: %.0f-%.0f"), PartRecord.MinAttackDamage, PartRecord.MaxAttackDamage), FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))];
+		BasicStatsBox->AddSlot().AutoHeight()[BuildItemViewerLine(FString::Printf(TEXT("Speed: %.2f / sec"), PartRecord.AttackSpeed), FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))];
+		BasicStatsBox->AddSlot().AutoHeight()[BuildItemViewerLine(FString::Printf(TEXT("Range: %.0f"), PartRecord.AttackRange), FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))];
+		BasicStatsBox->AddSlot().AutoHeight()[BuildItemViewerLine(FString::Printf(TEXT("Area: %.0f"), PartRecord.AreaAttackRange), FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))];
+		BasicStatsBox->AddSlot().AutoHeight()[BuildItemViewerLine(FString::Printf(TEXT("Crit: %.0f%% / x%.2f"), PartRecord.CriticalChance * 100.0f, PartRecord.CriticalDamageMultiplier), FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))];
+	}
+	else
+	{
+		BasicStatsBox->AddSlot().AutoHeight()[BuildItemViewerLine(FString::Printf(TEXT("Targeting AI: %s"), *StaticEnum<ESCTDTargetingAI>()->GetDisplayNameTextByValue(static_cast<int64>(PartRecord.TargetingAI)).ToString()), FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))];
+	}
+
+	TSharedRef<SVerticalBox> OptionsBox = SNew(SVerticalBox);
+	for (const FSCTDTurretPartOption& Option : PartRecord.AdditionalOptions)
+	{
+		OptionsBox->AddSlot().AutoHeight()
+		[
+			BuildItemViewerLine(FString::Printf(TEXT("%s %s"), *GetOptionLabel(Option.OptionId), *BuildOptionValueText(Option)), FLinearColor(0.34f, 0.48f, 1.0f, 1.0f))
+		];
+	}
+
+	return SNew(SBox)
+		.WidthOverride(360.0f)
+		[
+			SNew(SBorder)
+			.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+			.BorderBackgroundColor(PartRecord.RarityColor)
+			.Padding(2.0f)
+			[
+				SNew(SBorder)
+				.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+				.BorderBackgroundColor(FLinearColor(0.022f, 0.021f, 0.020f, 0.98f))
+				.Padding(14.0f)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						SNew(SSCTDMarqueeText)
+						.Text(FText::FromString(PartRecord.DisplayName))
+						.ColorAndOpacity(PartRecord.RarityColor)
+						.Font(FCoreStyle::GetDefaultFontStyle("Bold", 16))
+						.Justification(ETextJustify::Center)
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 3.0f, 0.0f, 10.0f)
+					[
+						SNew(SSCTDMarqueeText)
+						.Text(FText::FromString(FString::Printf(TEXT("%s / %s"), PartRecord.PartType == ESCTDTurretPartType::Base ? TEXT("BODY") : PartRecord.PartType == ESCTDTurretPartType::Weapon ? TEXT("WEAPON") : TEXT("CONTROL"), *BuildMountTypeText(PartRecord.MountType))))
+						.ColorAndOpacity(FLinearColor(0.72f, 0.72f, 0.68f, 1.0f))
+						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+						.Justification(ETextJustify::Center)
+					]
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth()
+						[
+							SNew(SBox)
+							.WidthOverride(76.0f)
+							.HeightOverride(112.0f)
+							[
+								SNew(SBorder)
+								.BorderImage(FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")))
+								.BorderBackgroundColor(FLinearColor(0.045f, 0.045f, 0.048f, 1.0f))
+							]
+						]
+						+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(14.0f, 0.0f, 0.0f, 0.0f)
+						[
+							BasicStatsBox
+						]
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 12.0f, 0.0f, 0.0f)
+					[
+						OptionsBox
+					]
+				]
+			]
+		];
+}
+
+TSharedRef<SWidget> ULabTurretFusionWidget::BuildItemViewerLine(const FString& Text, const FLinearColor& Color, int32 FontSize) const
+{
+	return SNew(SSCTDMarqueeText)
+		.Text(FText::FromString(Text))
+		.ColorAndOpacity(Color)
+		.Font(FCoreStyle::GetDefaultFontStyle("Regular", FontSize))
+		.Justification(ETextJustify::Left)
+		.TextLengthHandling(ESCTDTextLengthHandling::RenderOverflow);
+}
+
 FReply ULabTurretFusionWidget::HandleCreateTurretClicked()
 {
 	if (!CanAddNewTurret())
@@ -590,6 +941,7 @@ FReply ULabTurretFusionWidget::HandleDeckTabClicked(int32 DeckIndex)
 
 	ClearAssembly();
 	RefreshOwnedTurretList();
+	RefreshPartsList();
 	RefreshAssemblyPreview();
 	RefreshAssemblyStats();
 	return FReply::Handled();
@@ -605,6 +957,11 @@ FReply ULabTurretFusionWidget::HandlePartTabClicked(ESCTDTurretPartType PartType
 FReply ULabTurretFusionWidget::HandlePartItemDoubleClicked(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent, FSCTDOwnedTurretPartRecord PartRecord)
 {
 	if (bIsViewingTurret && !bIsEditingTurret)
+	{
+		return FReply::Handled();
+	}
+	const FGuid SelectedDeckId = GetSelectedDeckId();
+	if (SelectedDeckId.IsValid() && IsPartUsedInDeck(SelectedDeckId, PartRecord.InstanceId))
 	{
 		return FReply::Handled();
 	}
@@ -638,9 +995,9 @@ FReply ULabTurretFusionWidget::HandleViewTurretClicked(const FGeometry& MyGeomet
 		return FReply::Handled();
 	}
 
-	bHasSelectedBasePart = PartsRepository->FindPart(TurretRecord.BasePartInstanceId, SelectedBasePart);
-	bHasSelectedWeaponPart = PartsRepository->FindPart(TurretRecord.WeaponPartInstanceId, SelectedWeaponPart);
-	bHasSelectedControlPart = PartsRepository->FindPart(TurretRecord.ControlPartInstanceId, SelectedControlPart);
+	bHasSelectedBasePart = PartsRepository->FindResolvedPart(TurretRecord.BasePartInstanceId, SelectedBasePart);
+	bHasSelectedWeaponPart = PartsRepository->FindResolvedPart(TurretRecord.WeaponPartInstanceId, SelectedWeaponPart);
+	bHasSelectedControlPart = PartsRepository->FindResolvedPart(TurretRecord.ControlPartInstanceId, SelectedControlPart);
 	bIsEditingTurret = false;
 	bIsViewingTurret = true;
 	EditingDeckId = DeckId;
@@ -669,6 +1026,10 @@ FReply ULabTurretFusionWidget::HandleRegisterTurretClicked()
 	{
 		return FReply::Handled();
 	}
+	if (!CanUseSelectedPartsInDeck(DeckId))
+	{
+		return FReply::Handled();
+	}
 
 	FSCTDPreparedTurretRecord TurretRecord;
 	TurretRecord.InstanceId = bIsEditingTurret ? EditingTurretId : FGuid();
@@ -686,6 +1047,7 @@ FReply ULabTurretFusionWidget::HandleRegisterTurretClicked()
 		UserRepository->Save();
 		ClearAssembly();
 		RefreshOwnedTurretList();
+		RefreshPartsList();
 		RefreshAssemblyPreview();
 		RefreshAssemblyStats();
 	}
@@ -701,9 +1063,9 @@ FReply ULabTurretFusionWidget::HandleEditTurretClicked(FGuid DeckId, FSCTDPrepar
 		return FReply::Handled();
 	}
 
-	bHasSelectedBasePart = PartsRepository->FindPart(TurretRecord.BasePartInstanceId, SelectedBasePart);
-	bHasSelectedWeaponPart = PartsRepository->FindPart(TurretRecord.WeaponPartInstanceId, SelectedWeaponPart);
-	bHasSelectedControlPart = PartsRepository->FindPart(TurretRecord.ControlPartInstanceId, SelectedControlPart);
+	bHasSelectedBasePart = PartsRepository->FindResolvedPart(TurretRecord.BasePartInstanceId, SelectedBasePart);
+	bHasSelectedWeaponPart = PartsRepository->FindResolvedPart(TurretRecord.WeaponPartInstanceId, SelectedWeaponPart);
+	bHasSelectedControlPart = PartsRepository->FindResolvedPart(TurretRecord.ControlPartInstanceId, SelectedControlPart);
 	bIsEditingTurret = true;
 	bIsViewingTurret = false;
 	EditingDeckId = DeckId;
@@ -731,6 +1093,7 @@ FReply ULabTurretFusionWidget::HandleDeleteTurretClicked(FGuid DeckId, FGuid Tur
 			RefreshAssemblyStats();
 		}
 		RefreshOwnedTurretList();
+		RefreshPartsList();
 	}
 	return FReply::Handled();
 }
@@ -750,6 +1113,36 @@ FReply ULabTurretFusionWidget::HandleLobbyClicked()
 {
 	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Maps/Lobby")));
 	return FReply::Handled();
+}
+
+FReply ULabTurretFusionWidget::HandlePartMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent, FSCTDOwnedTurretPartRecord PartRecord)
+{
+	constexpr float ViewerWidth = 360.0f;
+	constexpr float ViewerGap = 8.0f;
+	const FGeometry& RootGeometry = GetCachedGeometry();
+	const FVector2D SlotPosition = RootGeometry.AbsoluteToLocal(MyGeometry.GetAbsolutePosition());
+	HoverCardPosition = FVector2D(FMath::Max(0.0f, SlotPosition.X - ViewerWidth - ViewerGap), SlotPosition.Y);
+	HandlePartHovered(PartRecord);
+	return FReply::Unhandled();
+}
+
+void ULabTurretFusionWidget::HandlePartHovered(FSCTDOwnedTurretPartRecord PartRecord)
+{
+	HoveredPart = PartRecord;
+	if (HoverCardBox)
+	{
+		HoverCardBox->SetContent(BuildItemViewerCard(PartRecord));
+		HoverCardBox->SetVisibility(EVisibility::HitTestInvisible);
+	}
+}
+
+void ULabTurretFusionWidget::HandlePartUnhovered()
+{
+	HoveredPart.Reset();
+	if (HoverCardBox)
+	{
+		HoverCardBox->SetVisibility(EVisibility::Collapsed);
+	}
 }
 
 void ULabTurretFusionWidget::RefreshAssemblyPreview()
@@ -821,41 +1214,126 @@ void ULabTurretFusionWidget::RefreshAssemblyStats()
 	const int32 BuildCost = (bHasSelectedBasePart ? SelectedBasePart.BuildCost : 0)
 		+ (bHasSelectedWeaponPart ? SelectedWeaponPart.BuildCost : 0)
 		+ (bHasSelectedControlPart ? SelectedControlPart.BuildCost : 0);
+	const int32 BaseBuildCost = (bHasSelectedBasePart ? GetBaselineBuildCost(SelectedBasePart) : 0)
+		+ (bHasSelectedWeaponPart ? GetBaselineBuildCost(SelectedWeaponPart) : 0)
+		+ (bHasSelectedControlPart ? GetBaselineBuildCost(SelectedControlPart) : 0);
 	const float BuildTime = (bHasSelectedBasePart ? SelectedBasePart.BuildTimeSeconds : 0.0f)
 		+ (bHasSelectedWeaponPart ? SelectedWeaponPart.BuildTimeSeconds : 0.0f)
 		+ (bHasSelectedControlPart ? SelectedControlPart.BuildTimeSeconds : 0.0f);
+	const float BaseBuildTime = (bHasSelectedBasePart ? GetBaselineBuildTime(SelectedBasePart) : 0.0f)
+		+ (bHasSelectedWeaponPart ? GetBaselineBuildTime(SelectedWeaponPart) : 0.0f)
+		+ (bHasSelectedControlPart ? GetBaselineBuildTime(SelectedControlPart) : 0.0f);
 	const float Health = bHasSelectedBasePart ? SelectedBasePart.BaseHealth : 0.0f;
 	const float Defense = bHasSelectedBasePart ? SelectedBasePart.Defense : 0.0f;
 	const float SelfRepair = bHasSelectedBasePart ? SelectedBasePart.SelfRepairPerSecond : 0.0f;
+	FLabPartBaseline BasePartBaseline;
+	const bool bHasBasePartBaseline = bHasSelectedBasePart && TryGetLabPartBaseline(SelectedBasePart, BasePartBaseline);
 	const float MinAttack = bHasSelectedWeaponPart ? SelectedWeaponPart.MinAttackDamage : 0.0f;
 	const float MaxAttack = bHasSelectedWeaponPart ? SelectedWeaponPart.MaxAttackDamage : 0.0f;
-	const float AttackSpeed = bHasSelectedWeaponPart ? SelectedWeaponPart.AttackSpeed : 0.0f;
+	const float WeaponAttackSpeed = bHasSelectedWeaponPart ? SelectedWeaponPart.AttackSpeed : 0.0f;
+	const float WeaponAttackSpeedOptionRatio = bHasSelectedWeaponPart ? FMath::Max(0.0f, SumOptionValue(SelectedWeaponPart, TEXT("IncreaseAttackSpeed"))) : 0.0f;
+	const float WeaponBaseAttackSpeed = WeaponAttackSpeedOptionRatio > KINDA_SMALL_NUMBER ? WeaponAttackSpeed / (1.0f + WeaponAttackSpeedOptionRatio) : WeaponAttackSpeed;
+	const float ExternalAttackSpeedBonusRatio = (bHasSelectedBasePart ? FMath::Max(0.0f, SelectedBasePart.AttackSpeed) : 0.0f)
+		+ (bHasSelectedControlPart ? FMath::Max(0.0f, SelectedControlPart.AttackSpeed) : 0.0f);
+	const float AttackSpeed = WeaponAttackSpeed * (1.0f + FMath::Max(0.0f, ExternalAttackSpeedBonusRatio));
 	const float AttackRange = bHasSelectedWeaponPart ? SelectedWeaponPart.AttackRange : 0.0f;
 	const float AreaRange = bHasSelectedWeaponPart ? SelectedWeaponPart.AreaAttackRange : 0.0f;
-	const float CriticalChance = bHasSelectedWeaponPart ? SelectedWeaponPart.CriticalChance : 0.0f;
-	const FString BodyMountType = bHasSelectedBasePart ? BuildMountTypeText(SelectedBasePart.MountType) : TEXT("None");
-	const FString WeaponMountType = bHasSelectedWeaponPart ? BuildMountTypeText(SelectedWeaponPart.MountType) : TEXT("None");
-	const FString MountState = IsMountTypeMatched() ? TEXT("MATCH") : TEXT("MISMATCH");
+	const float AttackRangeBonus = bHasSelectedWeaponPart ? SumOptionValue(SelectedWeaponPart, TEXT("IncreaseAttackRange")) : 0.0f;
+	const float AreaRangeBonus = bHasSelectedWeaponPart ? SumOptionValue(SelectedWeaponPart, TEXT("IncreaseAreaRange")) : 0.0f;
+	const float CriticalChance = FMath::Clamp((bHasSelectedWeaponPart ? SelectedWeaponPart.CriticalChance : 0.0f)
+		+ (bHasSelectedBasePart ? SelectedBasePart.CriticalChance : 0.0f)
+		+ (bHasSelectedControlPart ? SelectedControlPart.CriticalChance : 0.0f), 0.0f, 1.0f);
+	const float CriticalDamage = (bHasSelectedWeaponPart ? SelectedWeaponPart.CriticalDamageMultiplier : 1.5f)
+		+ (bHasSelectedBasePart ? FMath::Max(0.0f, SelectedBasePart.CriticalDamageMultiplier - 1.5f) : 0.0f)
+		+ (bHasSelectedControlPart ? FMath::Max(0.0f, SelectedControlPart.CriticalDamageMultiplier - 1.5f) : 0.0f);
+	const float PhysicalDamageBonusRatio = (bHasSelectedBasePart ? SelectedBasePart.PhysicalDamageBonusRatio : 0.0f) + (bHasSelectedWeaponPart ? SelectedWeaponPart.PhysicalDamageBonusRatio : 0.0f) + (bHasSelectedControlPart ? SelectedControlPart.PhysicalDamageBonusRatio : 0.0f);
+	const float FireDamageBonusRatio = (bHasSelectedBasePart ? SelectedBasePart.FireDamageBonusRatio : 0.0f) + (bHasSelectedWeaponPart ? SelectedWeaponPart.FireDamageBonusRatio : 0.0f) + (bHasSelectedControlPart ? SelectedControlPart.FireDamageBonusRatio : 0.0f);
+	const float LightningDamageBonusRatio = (bHasSelectedBasePart ? SelectedBasePart.LightningDamageBonusRatio : 0.0f) + (bHasSelectedWeaponPart ? SelectedWeaponPart.LightningDamageBonusRatio : 0.0f) + (bHasSelectedControlPart ? SelectedControlPart.LightningDamageBonusRatio : 0.0f);
+	const float FrostDamageBonusRatio = (bHasSelectedBasePart ? SelectedBasePart.FrostDamageBonusRatio : 0.0f) + (bHasSelectedWeaponPart ? SelectedWeaponPart.FrostDamageBonusRatio : 0.0f) + (bHasSelectedControlPart ? SelectedControlPart.FrostDamageBonusRatio : 0.0f);
+	const float TotalDamageBonusRatio = FMath::Max(0.0f, PhysicalDamageBonusRatio)
+		+ FMath::Max(0.0f, FireDamageBonusRatio)
+		+ FMath::Max(0.0f, LightningDamageBonusRatio)
+		+ FMath::Max(0.0f, FrostDamageBonusRatio);
 	const FString Control = bHasSelectedControlPart
 		? StaticEnum<ESCTDTargetingAI>()->GetDisplayNameTextByValue(static_cast<int64>(SelectedControlPart.TargetingAI)).ToString()
 		: TEXT("None");
+	const FString AttackAttributeText = bHasSelectedWeaponPart ? BuildAttackAttributeText(SelectedWeaponPart.AttackAttribute) : TEXT("None");
+	const bool bHasAnyAttributeDamage = HasDamageBonus(PhysicalDamageBonusRatio)
+		|| HasDamageBonus(FireDamageBonusRatio)
+		|| HasDamageBonus(LightningDamageBonusRatio)
+		|| HasDamageBonus(FrostDamageBonusRatio);
+
+	TSharedRef<SVerticalBox> WeaponStatsBox = SNew(SVerticalBox);
+	const FString TotalDamageText = TotalDamageBonusRatio > KINDA_SMALL_NUMBER
+		? FString::Printf(TEXT("%.1f-%.1f"), MinAttack * (1.0f + TotalDamageBonusRatio), MaxAttack * (1.0f + TotalDamageBonusRatio))
+		: FString::Printf(TEXT("%.0f-%.0f"), MinAttack, MaxAttack);
+	WeaponStatsBox->AddSlot().AutoHeight()[BuildStatsSectionTitle(TEXT("WEAPON"))];
+	WeaponStatsBox->AddSlot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 0.0f)[BuildStatsRow(TEXT("Total Damage"), TotalDamageText, TotalDamageBonusRatio > 0.0f ? FLinearColor(0.34f, 0.48f, 1.0f, 1.0f) : FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))];
+	WeaponStatsBox->AddSlot().AutoHeight()[BuildStatsRow(TEXT("Attribute"), AttackAttributeText)];
+	WeaponStatsBox->AddSlot().AutoHeight()[BuildStatsFormulaRow(TEXT("Speed"), AttackSpeed, WeaponBaseAttackSpeed, TEXT(" / sec"), 2)];
+	WeaponStatsBox->AddSlot().AutoHeight()[BuildStatsFormulaRow(TEXT("Range"), AttackRange, AttackRange - AttackRangeBonus)];
+	WeaponStatsBox->AddSlot().AutoHeight()[BuildStatsFormulaRow(TEXT("Area"), AreaRange, AreaRange - AreaRangeBonus)];
+	WeaponStatsBox->AddSlot().AutoHeight()[BuildStatsRow(TEXT("Crit"), FString::Printf(TEXT("%.0f%% / x%.2f"), CriticalChance * 100.0f, CriticalDamage))];
+	if (bHasAnyAttributeDamage)
+	{
+		WeaponStatsBox->AddSlot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 0.0f)[BuildStatsSectionTitle(TEXT("ADDITIONAL ATTRIBUTE DAMAGE"))];
+		WeaponStatsBox->AddSlot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 0.0f)[BuildStatsRow(TEXT("Base DMG"), FString::Printf(TEXT("%.0f~%.0f"), MinAttack, MaxAttack))];
+		if (HasDamageBonus(PhysicalDamageBonusRatio))
+		{
+			WeaponStatsBox->AddSlot().AutoHeight()[BuildAttributeDamageRow(TEXT("Physical"), MinAttack, MaxAttack, PhysicalDamageBonusRatio)];
+		}
+		if (HasDamageBonus(FireDamageBonusRatio))
+		{
+			WeaponStatsBox->AddSlot().AutoHeight()[BuildAttributeDamageRow(TEXT("Fire"), MinAttack, MaxAttack, FireDamageBonusRatio)];
+		}
+		if (HasDamageBonus(LightningDamageBonusRatio))
+		{
+			WeaponStatsBox->AddSlot().AutoHeight()[BuildAttributeDamageRow(TEXT("Lightning"), MinAttack, MaxAttack, LightningDamageBonusRatio)];
+		}
+		if (HasDamageBonus(FrostDamageBonusRatio))
+		{
+			WeaponStatsBox->AddSlot().AutoHeight()[BuildAttributeDamageRow(TEXT("Frost"), MinAttack, MaxAttack, FrostDamageBonusRatio)];
+		}
+	}
 
 	StatsContentBox->ClearChildren();
 	StatsContentBox->AddSlot().AutoHeight()
 	[
 		SNew(SSCTDMarqueeText)
-		.Text(FText::FromString(TEXT("TURRET STATS")))
+		.Text(FText::FromString(TEXT("TURRET DETAIL VIEWER")))
 		.ColorAndOpacity(FLinearColor(0.00f, 0.58f, 0.82f, 1.0f))
 		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 15))
+		.Justification(ETextJustify::Left)
 	];
-	StatsContentBox->AddSlot().FillHeight(1.0f).VAlign(VAlign_Center)
+	StatsContentBox->AddSlot().FillHeight(1.0f).Padding(0.0f, 8.0f, 0.0f, 0.0f)
 	[
-		SNew(SSCTDMarqueeText)
-						.Text(FText::FromString(FString::Printf(TEXT("TYPE %s / %s    %s\nCOST %d    TIME %.1fs\nHP %.0f    DEF %.0f    REP %.1f\nATK %.0f-%.0f    SPD %.2f    RNG %.0f    AOE %.0f    CRIT %.0f%%\nAI %s"),
-			*BodyMountType, *WeaponMountType, *MountState, BuildCost, BuildTime, Health, Defense, SelfRepair, MinAttack, MaxAttack, AttackSpeed, AttackRange, AreaRange, CriticalChance * 100.0f, *Control)))
-		.ColorAndOpacity(FLinearColor(0.70f, 0.86f, 0.94f, 1.0f))
-		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 16))
-		.Justification(ETextJustify::Center)
+		SNew(SScrollBox)
+		.Orientation(Orient_Vertical)
+		.ScrollBarVisibility(EVisibility::Collapsed)
+		+ SScrollBox::Slot()
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.0f).Padding(0.0f, 0.0f, 18.0f, 0.0f)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()[BuildStatsSectionTitle(TEXT("ASSEMBLY"))]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 0.0f)[BuildStatsRow(TEXT("Body Part"), PartLabel(bHasSelectedBasePart, SelectedBasePart, TEXT("body")), bHasSelectedBasePart ? SelectedBasePart.RarityColor : FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))]
+				+ SVerticalBox::Slot().AutoHeight()[BuildStatsRow(TEXT("Weapon Part"), PartLabel(bHasSelectedWeaponPart, SelectedWeaponPart, TEXT("weapon")), bHasSelectedWeaponPart ? SelectedWeaponPart.RarityColor : FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))]
+				+ SVerticalBox::Slot().AutoHeight()[BuildStatsRow(TEXT("Control Part"), PartLabel(bHasSelectedControlPart, SelectedControlPart, TEXT("control")), bHasSelectedControlPart ? SelectedControlPart.RarityColor : FLinearColor(0.82f, 0.86f, 0.96f, 1.0f))]
+				+ SVerticalBox::Slot().AutoHeight()[BuildStatsFormulaRow(TEXT("Build Cost"), static_cast<float>(BuildCost), static_cast<float>(BaseBuildCost))]
+				+ SVerticalBox::Slot().AutoHeight()[BuildStatsFormulaRow(TEXT("Build Time"), BuildTime, BaseBuildTime, TEXT("s"), 1)]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 0.0f)[BuildStatsSectionTitle(TEXT("BODY"))]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 0.0f)[BuildStatsFormulaRow(TEXT("Health"), Health, bHasBasePartBaseline ? BasePartBaseline.BaseHealth : Health)]
+				+ SVerticalBox::Slot().AutoHeight()[BuildStatsFormulaRow(TEXT("Defense"), Defense, bHasBasePartBaseline ? BasePartBaseline.Defense : Defense)]
+				+ SVerticalBox::Slot().AutoHeight()[BuildStatsFormulaRow(TEXT("Repair"), SelfRepair, bHasBasePartBaseline ? BasePartBaseline.SelfRepairPerSecond : SelfRepair, TEXT(" / sec"), 1)]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 0.0f)[BuildStatsSectionTitle(TEXT("CONTROL"))]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 0.0f)[BuildStatsRow(TEXT("Targeting AI"), Control)]
+			]
+			+ SHorizontalBox::Slot().FillWidth(1.0f)
+			[
+				WeaponStatsBox
+			]
+		]
 	];
 }
 
@@ -921,6 +1399,11 @@ void ULabTurretFusionWidget::RefreshPartsList()
 
 	for (const FSCTDOwnedTurretPartRecord& PartRecord : PartsRepository->GetOwnedPartsByType(SelectedPartType))
 	{
+		const FGuid SelectedDeckId = GetSelectedDeckId();
+		if (SelectedDeckId.IsValid() && IsPartUsedInDeck(SelectedDeckId, PartRecord.InstanceId))
+		{
+			continue;
+		}
 		PartsScrollBox->AddSlot().Padding(0.0f, 0.0f, 0.0f, 10.0f)[BuildPartItem(PartRecord)];
 	}
 }
@@ -944,6 +1427,45 @@ bool ULabTurretFusionWidget::IsMountTypeMatched() const
 	return !bHasSelectedBasePart || !bHasSelectedWeaponPart || SelectedBasePart.MountType == SelectedWeaponPart.MountType;
 }
 
+bool ULabTurretFusionWidget::IsPartUsedInDeck(const FGuid& DeckId, const FGuid& PartInstanceId, const FGuid& IgnoredTurretInstanceId) const
+{
+	const USCTDDeckRepository* DeckRepository = UserRepository ? UserRepository->GetDeckRepository() : nullptr;
+	if (!DeckRepository || !DeckId.IsValid() || !PartInstanceId.IsValid())
+	{
+		return false;
+	}
+
+	FSCTDTurretDeckRecord DeckRecord;
+	if (!DeckRepository->FindDeck(DeckId, DeckRecord))
+	{
+		return false;
+	}
+
+	for (const FSCTDPreparedTurretRecord& TurretRecord : DeckRecord.Turrets)
+	{
+		if (IgnoredTurretInstanceId.IsValid() && TurretRecord.InstanceId == IgnoredTurretInstanceId)
+		{
+			continue;
+		}
+		if (TurretRecord.BasePartInstanceId == PartInstanceId
+			|| TurretRecord.WeaponPartInstanceId == PartInstanceId
+			|| TurretRecord.ControlPartInstanceId == PartInstanceId)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool ULabTurretFusionWidget::CanUseSelectedPartsInDeck(const FGuid& DeckId) const
+{
+	const FGuid IgnoredTurretInstanceId = bIsEditingTurret ? EditingTurretId : FGuid();
+	return (!bHasSelectedBasePart || !IsPartUsedInDeck(DeckId, SelectedBasePart.InstanceId, IgnoredTurretInstanceId))
+		&& (!bHasSelectedWeaponPart || !IsPartUsedInDeck(DeckId, SelectedWeaponPart.InstanceId, IgnoredTurretInstanceId))
+		&& (!bHasSelectedControlPart || !IsPartUsedInDeck(DeckId, SelectedControlPart.InstanceId, IgnoredTurretInstanceId));
+}
+
 FString ULabTurretFusionWidget::BuildMountTypeText(ESCTDTurretMountType MountType) const
 {
 	switch (MountType)
@@ -957,6 +1479,37 @@ FString ULabTurretFusionWidget::BuildMountTypeText(ESCTDTurretMountType MountTyp
 	default:
 		return TEXT("-");
 	}
+}
+
+FString ULabTurretFusionWidget::BuildAttackAttributeText(ESCTDAttackAttribute AttackAttribute) const
+{
+	switch (AttackAttribute)
+	{
+	case ESCTDAttackAttribute::Physical:
+		return TEXT("PHYSICAL");
+	case ESCTDAttackAttribute::Fire:
+		return TEXT("FIRE");
+	case ESCTDAttackAttribute::Lightning:
+		return TEXT("LIGHTNING");
+	case ESCTDAttackAttribute::Frost:
+		return TEXT("FROST");
+	default:
+		return TEXT("-");
+	}
+}
+
+FString ULabTurretFusionWidget::BuildOptionValueText(const FSCTDTurretPartOption& Option) const
+{
+	if (FMath::Abs(Option.Value) <= 1.0f)
+	{
+		return FString::Printf(TEXT("+%.0f%%"), Option.Value * 100.0f);
+	}
+	return FString::Printf(TEXT("+%.1f"), Option.Value);
+}
+
+FString ULabTurretFusionWidget::GetOptionLabel(FName OptionId) const
+{
+	return OptionId.IsNone() ? TEXT("-") : OptionId.ToString();
 }
 
 bool ULabTurretFusionWidget::CanAddNewTurret() const

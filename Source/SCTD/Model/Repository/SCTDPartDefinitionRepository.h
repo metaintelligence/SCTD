@@ -43,6 +43,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Repository|Part Options")
 	TArray<FSCTDRolledTurretPartOption> RollOptionsForRarity(FName OptionPoolId, ESCTDTurretPartType PartType, ESCTDItemRarity Rarity, int32 OptionCount) const;
 
+	UFUNCTION(BlueprintCallable, Category = "Repository|Part Options")
+	TArray<FSCTDRolledTurretPartOption> RollOptionsForDefinition(const FSCTDTurretPartDefinitionRow& Definition, ESCTDItemRarity Rarity, int32 OptionCount) const;
+
 	UFUNCTION(BlueprintCallable, Category = "Repository|Item Drop")
 	FSCTDItemRarityDefinitionRow RollRarity() const;
 

@@ -7,6 +7,7 @@
 
 class SScrollBox;
 class SEditableTextBox;
+class SBox;
 class SVerticalBox;
 class USCTDUserRepository;
 
@@ -20,6 +21,7 @@ public:
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 private:
 	UPROPERTY(Transient)
@@ -31,6 +33,7 @@ private:
 	TSharedPtr<SVerticalBox> PreviewContentBox;
 	TSharedPtr<SVerticalBox> StatsContentBox;
 	TSharedPtr<SEditableTextBox> TurretNameTextBox;
+	TSharedPtr<SBox> HoverCardBox;
 
 	ESCTDTurretPartType SelectedPartType = ESCTDTurretPartType::Base;
 	int32 SelectedDeckIndex = 0;
@@ -44,6 +47,8 @@ private:
 	FSCTDOwnedTurretPartRecord SelectedBasePart;
 	FSCTDOwnedTurretPartRecord SelectedWeaponPart;
 	FSCTDOwnedTurretPartRecord SelectedControlPart;
+	TOptional<FSCTDOwnedTurretPartRecord> HoveredPart;
+	FVector2D HoverCardPosition = FVector2D::ZeroVector;
 
 	TSharedRef<SWidget> BuildHeader();
 	TSharedRef<SWidget> BuildOwnedTurretList();
@@ -57,6 +62,12 @@ private:
 	TSharedRef<SWidget> BuildPartTab(const FString& Label, ESCTDTurretPartType PartType);
 	TSharedRef<SWidget> BuildPartItem(const FSCTDOwnedTurretPartRecord& PartRecord);
 	TSharedRef<SWidget> BuildEmptyPanel(const FString& Label, const FString& Description, const FLinearColor& AccentColor);
+	TSharedRef<SWidget> BuildStatsSectionTitle(const FString& Label) const;
+	TSharedRef<SWidget> BuildStatsRow(const FString& Label, const FString& Value, const FLinearColor& ValueColor = FLinearColor(0.82f, 0.86f, 0.96f, 1.0f)) const;
+	TSharedRef<SWidget> BuildStatsFormulaRow(const FString& Label, float CurrentValue, float BaseValue, const FString& Suffix = TEXT(""), int32 DecimalPlaces = 0) const;
+	TSharedRef<SWidget> BuildAttributeDamageRow(const FString& Label, float MinBaseDamage, float MaxBaseDamage, float Ratio) const;
+	TSharedRef<SWidget> BuildItemViewerCard(const FSCTDOwnedTurretPartRecord& PartRecord) const;
+	TSharedRef<SWidget> BuildItemViewerLine(const FString& Text, const FLinearColor& Color, int32 FontSize = 10) const;
 
 	FReply HandleCreateTurretClicked();
 	FReply HandleDeckTabClicked(int32 DeckIndex);
@@ -68,6 +79,9 @@ private:
 	FReply HandleDeleteTurretClicked(FGuid DeckId, FGuid TurretInstanceId);
 	FReply HandleMoveTurretClicked(FGuid DeckId, FGuid TurretInstanceId, int32 Direction);
 	FReply HandleLobbyClicked();
+	FReply HandlePartMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent, FSCTDOwnedTurretPartRecord PartRecord);
+	void HandlePartHovered(FSCTDOwnedTurretPartRecord PartRecord);
+	void HandlePartUnhovered();
 	void RefreshAssemblyPreview();
 	void RefreshAssemblyStats();
 	void RefreshOwnedTurretList();
@@ -75,8 +89,13 @@ private:
 	void StartNewAssembly();
 	bool IsAssemblyComplete() const;
 	bool IsMountTypeMatched() const;
+	bool IsPartUsedInDeck(const FGuid& DeckId, const FGuid& PartInstanceId, const FGuid& IgnoredTurretInstanceId = FGuid()) const;
+	bool CanUseSelectedPartsInDeck(const FGuid& DeckId) const;
 	bool CanAddNewTurret() const;
 	FString BuildMountTypeText(ESCTDTurretMountType MountType) const;
+	FString BuildAttackAttributeText(ESCTDAttackAttribute AttackAttribute) const;
+	FString BuildOptionValueText(const FSCTDTurretPartOption& Option) const;
+	FString GetOptionLabel(FName OptionId) const;
 	FGuid GetOrCreatePrimaryDeckId();
 	FGuid GetSelectedDeckId() const;
 	FGuid GetOrCreateDeckIdByIndex(int32 DeckIndex);

@@ -29,6 +29,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float AreaAttackRange = 0.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon")
+	bool bCanAreaAttack = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
 	float CriticalChance = 0.0f;
 

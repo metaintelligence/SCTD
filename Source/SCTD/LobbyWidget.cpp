@@ -51,10 +51,10 @@ TSharedRef<SWidget> ULobbyWidget::RebuildWidget()
 				.Padding(52.0f, 0.0f)
 				[
 					BuildModeCard(
-						TEXT("STAT"),
-						TEXT("Not implemented yet"),
+						TEXT("INVENTORY"),
+						TEXT("Manage collected parts"),
 						FLinearColor(0.00f, 0.70f, 0.25f, 1.0f),
-						FOnClicked::CreateUObject(this, &ULobbyWidget::HandleStatClicked))
+						FOnClicked::CreateUObject(this, &ULobbyWidget::HandleInventoryClicked))
 				]
 				+ SHorizontalBox::Slot()
 				.FillWidth(0.86f)
@@ -160,8 +160,9 @@ FReply ULobbyWidget::HandleDefenseClicked()
 	return FReply::Handled();
 }
 
-FReply ULobbyWidget::HandleStatClicked()
+FReply ULobbyWidget::HandleInventoryClicked()
 {
+	UGameplayStatics::OpenLevel(this, FName(TEXT("/Game/Maps/Inventory")));
 	return FReply::Handled();
 }
 

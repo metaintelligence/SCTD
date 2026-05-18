@@ -47,11 +47,7 @@ FGuid USCTDPartsRepository::AddPartByDefinitionIdAndRarity(FName DefinitionId, E
 		return FGuid();
 	}
 
-	const TArray<FSCTDRolledTurretPartOption> RolledOptions = DefinitionRepository->RollOptionsForRarity(
-		Definition.OptionPoolId,
-		Definition.PartType,
-		Rarity,
-		RandomOptionCount);
+	const TArray<FSCTDRolledTurretPartOption> RolledOptions = DefinitionRepository->RollOptionsForDefinition(Definition, Rarity, RandomOptionCount);
 
 	FSCTDOwnedTurretPartRecord NewRecord;
 	if (!DefinitionRepository->BuildOwnedPartFromDefinition(DefinitionId, RolledOptions, NewRecord))

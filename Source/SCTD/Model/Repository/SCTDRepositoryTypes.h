@@ -133,6 +133,9 @@ struct FSCTDTurretPartDefinitionRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Weapon")
 	float AreaAttackRange = 0.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Weapon")
+	bool bCanAreaAttack = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Weapon", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float CriticalChance = 0.0f;
 
@@ -262,6 +265,9 @@ struct FSCTDOwnedTurretPartRecord
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Weapon")
 	float AreaAttackRange = 0.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Weapon")
+	bool bCanAreaAttack = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Weapon", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float CriticalChance = 0.0f;
 
@@ -288,6 +294,9 @@ struct FSCTDOwnedTurretPartRecord
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Weapon")
 	float FrostDamageBonusRatio = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Reward")
+	float ScrapGainBonusRatio = 0.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part|Control")
 	FName AIProfileId = NAME_None;
