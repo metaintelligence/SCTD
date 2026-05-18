@@ -74,7 +74,9 @@ private:
 	void RefreshPartsList();
 	void StartNewAssembly();
 	bool IsAssemblyComplete() const;
+	bool IsMountTypeMatched() const;
 	bool CanAddNewTurret() const;
+	FString BuildMountTypeText(ESCTDTurretMountType MountType) const;
 	FGuid GetOrCreatePrimaryDeckId();
 	FGuid GetSelectedDeckId() const;
 	FGuid GetOrCreateDeckIdByIndex(int32 DeckIndex);

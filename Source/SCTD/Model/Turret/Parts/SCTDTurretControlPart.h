@@ -11,7 +11,7 @@ class SCTD_API USCTDTurretControlPart : public USCTDTurretPart
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Control")
-	FName AIProfileId = TEXT("Default");
+	ESCTDTargetingAI TargetingAI = ESCTDTargetingAI::Closer;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Control")
 	FText AIProfileDescription;

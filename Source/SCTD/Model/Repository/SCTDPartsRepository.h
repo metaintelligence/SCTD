@@ -22,6 +22,9 @@ public:
 	FGuid AddPartByDefinitionId(FName DefinitionId, int32 RandomOptionCount = 0, bool bSaveImmediately = true);
 
 	UFUNCTION(BlueprintCallable, Category = "Repository|Parts")
+	FGuid AddPartByDefinitionIdAndRarity(FName DefinitionId, ESCTDItemRarity Rarity, int32 RandomOptionCount, const FLinearColor& RarityColor, bool bSaveImmediately = true);
+
+	UFUNCTION(BlueprintCallable, Category = "Repository|Parts")
 	bool RemovePart(const FGuid& PartInstanceId);
 
 	UFUNCTION(BlueprintPure, Category = "Repository|Parts")

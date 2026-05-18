@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "../Combat/SCTDAttackTypes.h"
+#include "Parts/SCTDTurretPartTypes.h"
 #include "UObject/Object.h"
 #include "SCTDTurret.generated.h"
 
@@ -21,10 +22,16 @@ struct FSCTDTurretFinalStats
 	float BuildTimeSeconds = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
+	ESCTDTurretMountType MountType = ESCTDTurretMountType::Tower;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
 	float MaxHealth = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
 	float Defense = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
+	float SelfRepairPerSecond = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
 	float MinAttackDamage = 0.0f;
@@ -39,7 +46,19 @@ struct FSCTDTurretFinalStats
 	float AttackRange = 0.0f;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
+	float AreaAttackRange = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
+	float CriticalChance = 0.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
+	float CriticalDamageMultiplier = 1.5f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
 	FName AIProfileId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
+	ESCTDTargetingAI TargetingAI = ESCTDTargetingAI::Closer;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Turret|Stats")
 	ESCTDAttackAttribute AttackAttribute = ESCTDAttackAttribute::Physical;

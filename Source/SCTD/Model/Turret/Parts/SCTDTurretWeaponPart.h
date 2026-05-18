@@ -11,6 +11,9 @@ class SCTD_API USCTDTurretWeaponPart : public USCTDTurretPart
 	GENERATED_BODY()
 
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon")
+	ESCTDTurretMountType MountType = ESCTDTurretMountType::Tower;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float MinAttackDamage = 10.0f;
 
@@ -22,6 +25,15 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float AttackRange = 4.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float AreaAttackRange = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float CriticalChance = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon", meta = (ClampMin = "1.0", UIMin = "1.0"))
+	float CriticalDamageMultiplier = 1.5f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Turret Part|Weapon")
 	ESCTDAttackAttribute AttackAttribute = ESCTDAttackAttribute::Physical;

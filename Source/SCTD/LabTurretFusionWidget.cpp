@@ -495,15 +495,15 @@ TSharedRef<SWidget> ULabTurretFusionWidget::BuildPartItem(const FSCTDOwnedTurret
 	FString StatLine;
 	if (PartRecord.PartType == ESCTDTurretPartType::Base)
 	{
-		StatLine = FString::Printf(TEXT("HP %.0f / DEF %.0f"), PartRecord.BaseHealth, PartRecord.Defense);
+		StatLine = FString::Printf(TEXT("%s / HP %.0f / DEF %.0f / REP %.1f"), *BuildMountTypeText(PartRecord.MountType), PartRecord.BaseHealth, PartRecord.Defense, PartRecord.SelfRepairPerSecond);
 	}
 	else if (PartRecord.PartType == ESCTDTurretPartType::Weapon)
 	{
-		StatLine = FString::Printf(TEXT("ATK %.0f-%.0f / SPD %.2f / RNG %.0f"), PartRecord.MinAttackDamage, PartRecord.MaxAttackDamage, PartRecord.AttackSpeed, PartRecord.AttackRange);
+		StatLine = FString::Printf(TEXT("%s / ATK %.0f-%.0f / SPD %.2f / RNG %.0f / AOE %.0f"), *BuildMountTypeText(PartRecord.MountType), PartRecord.MinAttackDamage, PartRecord.MaxAttackDamage, PartRecord.AttackSpeed, PartRecord.AttackRange, PartRecord.AreaAttackRange);
 	}
 	else
 	{
-		StatLine = FString::Printf(TEXT("AI %s"), *PartRecord.AIProfileId.ToString());
+		StatLine = FString::Printf(TEXT("AI %s"), *StaticEnum<ESCTDTargetingAI>()->GetDisplayNameTextByValue(static_cast<int64>(PartRecord.TargetingAI)).ToString());
 	}
 
 	return SNew(SBox)
@@ -795,6 +795,7 @@ void ULabTurretFusionWidget::RefreshAssemblyPreview()
 			[
 				SNew(SButton)
 				.ContentPadding(FMargin(18.0f, 7.0f))
+				.IsEnabled(IsMountTypeMatched())
 				.OnClicked(BIND_UOBJECT_DELEGATE(FOnClicked, HandleRegisterTurretClicked))
 				[
 					SNew(SSCTDMarqueeText)
@@ -825,11 +826,19 @@ void ULabTurretFusionWidget::RefreshAssemblyStats()
 		+ (bHasSelectedControlPart ? SelectedControlPart.BuildTimeSeconds : 0.0f);
 	const float Health = bHasSelectedBasePart ? SelectedBasePart.BaseHealth : 0.0f;
 	const float Defense = bHasSelectedBasePart ? SelectedBasePart.Defense : 0.0f;
+	const float SelfRepair = bHasSelectedBasePart ? SelectedBasePart.SelfRepairPerSecond : 0.0f;
 	const float MinAttack = bHasSelectedWeaponPart ? SelectedWeaponPart.MinAttackDamage : 0.0f;
 	const float MaxAttack = bHasSelectedWeaponPart ? SelectedWeaponPart.MaxAttackDamage : 0.0f;
 	const float AttackSpeed = bHasSelectedWeaponPart ? SelectedWeaponPart.AttackSpeed : 0.0f;
 	const float AttackRange = bHasSelectedWeaponPart ? SelectedWeaponPart.AttackRange : 0.0f;
-	const FString Control = bHasSelectedControlPart ? SelectedControlPart.AIProfileId.ToString() : TEXT("None");
+	const float AreaRange = bHasSelectedWeaponPart ? SelectedWeaponPart.AreaAttackRange : 0.0f;
+	const float CriticalChance = bHasSelectedWeaponPart ? SelectedWeaponPart.CriticalChance : 0.0f;
+	const FString BodyMountType = bHasSelectedBasePart ? BuildMountTypeText(SelectedBasePart.MountType) : TEXT("None");
+	const FString WeaponMountType = bHasSelectedWeaponPart ? BuildMountTypeText(SelectedWeaponPart.MountType) : TEXT("None");
+	const FString MountState = IsMountTypeMatched() ? TEXT("MATCH") : TEXT("MISMATCH");
+	const FString Control = bHasSelectedControlPart
+		? StaticEnum<ESCTDTargetingAI>()->GetDisplayNameTextByValue(static_cast<int64>(SelectedControlPart.TargetingAI)).ToString()
+		: TEXT("None");
 
 	StatsContentBox->ClearChildren();
 	StatsContentBox->AddSlot().AutoHeight()
@@ -842,8 +851,8 @@ void ULabTurretFusionWidget::RefreshAssemblyStats()
 	StatsContentBox->AddSlot().FillHeight(1.0f).VAlign(VAlign_Center)
 	[
 		SNew(SSCTDMarqueeText)
-		.Text(FText::FromString(FString::Printf(TEXT("COST %d    TIME %.1fs\nHP %.0f    DEF %.0f    ATK %.0f-%.0f    SPD %.2f    RNG %.0f\nAI %s"),
-			BuildCost, BuildTime, Health, Defense, MinAttack, MaxAttack, AttackSpeed, AttackRange, *Control)))
+						.Text(FText::FromString(FString::Printf(TEXT("TYPE %s / %s    %s\nCOST %d    TIME %.1fs\nHP %.0f    DEF %.0f    REP %.1f\nATK %.0f-%.0f    SPD %.2f    RNG %.0f    AOE %.0f    CRIT %.0f%%\nAI %s"),
+			*BodyMountType, *WeaponMountType, *MountState, BuildCost, BuildTime, Health, Defense, SelfRepair, MinAttack, MaxAttack, AttackSpeed, AttackRange, AreaRange, CriticalChance * 100.0f, *Control)))
 		.ColorAndOpacity(FLinearColor(0.70f, 0.86f, 0.94f, 1.0f))
 		.Font(FCoreStyle::GetDefaultFontStyle("Bold", 16))
 		.Justification(ETextJustify::Center)
@@ -927,7 +936,27 @@ void ULabTurretFusionWidget::StartNewAssembly()
 
 bool ULabTurretFusionWidget::IsAssemblyComplete() const
 {
-	return bHasSelectedBasePart && bHasSelectedWeaponPart && bHasSelectedControlPart;
+	return bHasSelectedBasePart && bHasSelectedWeaponPart && bHasSelectedControlPart && IsMountTypeMatched();
+}
+
+bool ULabTurretFusionWidget::IsMountTypeMatched() const
+{
+	return !bHasSelectedBasePart || !bHasSelectedWeaponPart || SelectedBasePart.MountType == SelectedWeaponPart.MountType;
+}
+
+FString ULabTurretFusionWidget::BuildMountTypeText(ESCTDTurretMountType MountType) const
+{
+	switch (MountType)
+	{
+	case ESCTDTurretMountType::Tower:
+		return TEXT("TOWER");
+	case ESCTDTurretMountType::Cannon:
+		return TEXT("CANNON");
+	case ESCTDTurretMountType::Arm:
+		return TEXT("ARM");
+	default:
+		return TEXT("-");
+	}
 }
 
 bool ULabTurretFusionWidget::CanAddNewTurret() const

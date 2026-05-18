@@ -52,11 +52,19 @@ TSharedRef<SWidget> UTurretStatsPopupWidget::RebuildWidget()
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 0.0f)
 					[
+						BuildStatRow(TEXT("TYPE"), BuildMountTypeText())
+					]
+					+ SVerticalBox::Slot().AutoHeight()
+					[
 						BuildStatRow(TEXT("HP"), FString::Printf(TEXT("%.0f"), Stats.MaxHealth))
 					]
 					+ SVerticalBox::Slot().AutoHeight()
 					[
 						BuildStatRow(TEXT("DEF"), FString::Printf(TEXT("%.0f"), Stats.Defense))
+					]
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						BuildStatRow(TEXT("REPAIR"), FString::Printf(TEXT("%.1f / sec"), Stats.SelfRepairPerSecond))
 					]
 					+ SVerticalBox::Slot().AutoHeight()
 					[
@@ -73,6 +81,14 @@ TSharedRef<SWidget> UTurretStatsPopupWidget::RebuildWidget()
 					+ SVerticalBox::Slot().AutoHeight()
 					[
 						BuildStatRow(TEXT("RANGE"), FString::Printf(TEXT("%.0f tiles"), Stats.AttackRangeTiles))
+					]
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						BuildStatRow(TEXT("AOE"), FString::Printf(TEXT("%.0f tiles"), Stats.AreaAttackRangeTiles))
+					]
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						BuildStatRow(TEXT("CRIT"), FString::Printf(TEXT("%.0f%% / x%.2f"), Stats.CriticalChance * 100.0f, Stats.CriticalDamageMultiplier))
 					]
 					+ SVerticalBox::Slot().AutoHeight()
 					[
@@ -105,17 +121,40 @@ TSharedRef<SWidget> UTurretStatsPopupWidget::BuildStatRow(const FString& Label, 
 		];
 }
 
+FString UTurretStatsPopupWidget::BuildMountTypeText() const
+{
+	switch (Stats.MountType)
+	{
+	case ESCTDTurretMountType::Tower:
+		return TEXT("TOWER");
+	case ESCTDTurretMountType::Cannon:
+		return TEXT("CANNON");
+	case ESCTDTurretMountType::Arm:
+		return TEXT("ARM");
+	default:
+		return TEXT("-");
+	}
+}
+
 FString UTurretStatsPopupWidget::BuildAIText() const
 {
-	if (Stats.AIProfileId == TEXT("MaxHealth"))
+	switch (Stats.TargetingAI)
 	{
-		return TEXT("Max health target");
+	case ESCTDTargetingAI::Closer:
+		return TEXT("CLOSER");
+	case ESCTDTargetingAI::Sniper:
+		return TEXT("SNIPER");
+	case ESCTDTargetingAI::Greedy:
+		return TEXT("GREEDY");
+	case ESCTDTargetingAI::Potato:
+		return TEXT("POTATO");
+	case ESCTDTargetingAI::Chaser:
+		return TEXT("CHASER");
+	case ESCTDTargetingAI::Revenge:
+		return TEXT("REVENGE");
+	default:
+		return TEXT("-");
 	}
-	if (Stats.AIProfileId == TEXT("MinHealth"))
-	{
-		return TEXT("Min health target");
-	}
-	return TEXT("Nearest target");
 }
 
 FString UTurretStatsPopupWidget::BuildAttackAttributeText() const

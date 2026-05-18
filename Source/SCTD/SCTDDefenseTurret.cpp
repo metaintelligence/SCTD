@@ -65,6 +65,7 @@ void ASCTDDefenseTurret::Tick(float DeltaSeconds)
 	}
 
 	AttackCooldownRemaining = FMath::Max(0.0f, AttackCooldownRemaining - DeltaSeconds);
+	ApplySelfRepair(DeltaSeconds);
 	UpdateDynamicDialogState();
 	UpdateStatsPopupLocation();
 	if (AttackCooldownRemaining > 0.0f || FMath::Max(MinAttackDamage, MaxAttackDamage) <= 0.0f || AttackSpeed <= 0.0f)
@@ -79,9 +80,27 @@ void ASCTDDefenseTurret::Tick(float DeltaSeconds)
 	}
 
 	FDamageEvent DamageEvent;
-	const float RolledDamage = RollAttackDamage();
+	const float RolledDamage = ApplyCriticalRoll(RollAttackDamage());
 	Target->TakeDamage(RolledDamage, DamageEvent, nullptr, this);
 	RollStatusEffectsForTarget(Target);
+	if (AreaAttackRangeTiles > 0.0f)
+	{
+		for (TActorIterator<ABaseMonster> It(GetWorld()); It; ++It)
+		{
+			ABaseMonster* SplashTarget = *It;
+			if (!SplashTarget || SplashTarget == Target || SplashTarget->IsActorBeingDestroyed() || SplashTarget->GetCurrentHealth() <= 0.0f)
+			{
+				continue;
+			}
+
+			const int32 SplashDistanceFromTarget = GetTileDistanceBetweenActors(Target, SplashTarget);
+			if (SplashDistanceFromTarget >= 0 && SplashDistanceFromTarget <= FMath::FloorToInt(AreaAttackRangeTiles))
+			{
+				SplashTarget->TakeDamage(RolledDamage, DamageEvent, nullptr, this);
+				RollStatusEffectsForTarget(SplashTarget);
+			}
+		}
+	}
 	AttackCooldownRemaining = 1.0f / FMath::Max(0.01f, AttackSpeed);
 	UE_LOG(LogSCTDDefenseTurret, VeryVerbose, TEXT("%s attacked %s damage=%.1f range=%.1f attribute=%d ai=%s"),
 		*GetNameSafe(this),
@@ -98,15 +117,27 @@ void ASCTDDefenseTurret::InitializeFromRecords(const FSCTDPreparedTurretRecord& 
 	BasePartName = BasePart.DisplayName;
 	WeaponPartName = WeaponPart.DisplayName;
 	ControlPartName = ControlPart.DisplayName;
-	MaxHealth = BasePart.BaseHealth;
-	Defense = BasePart.Defense;
+	MountType = BasePart.MountType;
+	MaxHealth = BasePart.BaseHealth * (1.0f + FMath::Max(0.0f, ControlPart.BaseHealth));
+	Defense = BasePart.Defense * (1.0f + FMath::Max(0.0f, ControlPart.Defense));
+	SelfRepairPerSecond = BasePart.SelfRepairPerSecond * (1.0f + FMath::Max(0.0f, ControlPart.SelfRepairPerSecond));
 	MinAttackDamage = WeaponPart.MinAttackDamage;
 	MaxAttackDamage = WeaponPart.MaxAttackDamage;
-	AttackSpeed = WeaponPart.AttackSpeed;
+	AttackSpeed = WeaponPart.AttackSpeed * (1.0f + FMath::Max(0.0f, BasePart.AttackSpeed) + FMath::Max(0.0f, ControlPart.AttackSpeed));
 	AttackRangeTiles = WeaponPart.AttackRange;
+	AreaAttackRangeTiles = WeaponPart.AreaAttackRange;
+	CriticalChance = FMath::Clamp(WeaponPart.CriticalChance + BasePart.CriticalChance + ControlPart.CriticalChance, 0.0f, 1.0f);
+	CriticalDamageMultiplier = WeaponPart.CriticalDamageMultiplier + FMath::Max(0.0f, BasePart.CriticalDamageMultiplier - 1.5f) + FMath::Max(0.0f, ControlPart.CriticalDamageMultiplier - 1.5f);
+	PhysicalDamageBonusRatio = WeaponPart.PhysicalDamageBonusRatio + ControlPart.PhysicalDamageBonusRatio;
+	FireDamageBonusRatio = WeaponPart.FireDamageBonusRatio + ControlPart.FireDamageBonusRatio;
+	LightningDamageBonusRatio = WeaponPart.LightningDamageBonusRatio + ControlPart.LightningDamageBonusRatio;
+	FrostDamageBonusRatio = WeaponPart.FrostDamageBonusRatio + ControlPart.FrostDamageBonusRatio;
 	AttackAttribute = WeaponPart.AttackAttribute;
 	StatusEffectChances = WeaponPart.StatusEffectChances;
+	StatusEffectSpecs = WeaponPart.StatusEffectSpecs;
+	StatusEffectSpecs.Append(ControlPart.StatusEffectSpecs);
 	AIProfileId = ControlPart.AIProfileId;
+	TargetingAI = ControlPart.TargetingAI;
 	CurrentHealth = MaxHealth;
 }
 
@@ -117,7 +148,7 @@ float ASCTDDefenseTurret::TakeDamage(float DamageAmount, FDamageEvent const& Dam
 		return 0.0f;
 	}
 
-	const float DefenseMultiplier = 100.0f / (100.0f + FMath::Max(0.0f, Defense));
+	const float DefenseMultiplier = CalculateDefenseDamageMultiplier();
 	const float AppliedDamage = DamageAmount * DefenseMultiplier;
 	CurrentHealth = FMath::Max(0.0f, CurrentHealth - AppliedDamage);
 	SCTDFloatingDamageText::Spawn(this, AppliedDamage, 154.0f);
@@ -140,10 +171,7 @@ ABaseMonster* ASCTDDefenseTurret::FindTarget() const
 
 	ABaseMonster* BestTarget = nullptr;
 	int32 BestTileDistance = TNumericLimits<int32>::Max();
-	float BestHealth = 0.0f;
 	const int32 MaxTileRange = FMath::Max(0, FMath::FloorToInt(AttackRangeTiles));
-	const bool bMaxHealthAI = AIProfileId == TEXT("MaxHealth");
-	const bool bMinHealthAI = AIProfileId == TEXT("MinHealth");
 
 	for (TActorIterator<ABaseMonster> It(World); It; ++It)
 	{
@@ -159,19 +187,43 @@ ABaseMonster* ASCTDDefenseTurret::FindTarget() const
 			continue;
 		}
 
-		const float MonsterHealth = Monster->GetCurrentHealth();
-		if (!BestTarget
-			|| (bMaxHealthAI && MonsterHealth > BestHealth)
-			|| (bMinHealthAI && MonsterHealth < BestHealth)
-			|| (!bMaxHealthAI && !bMinHealthAI && TileDistance < BestTileDistance))
+		if (IsBetterTarget(Monster, BestTarget, TileDistance, BestTileDistance))
 		{
 			BestTarget = Monster;
 			BestTileDistance = TileDistance;
-			BestHealth = MonsterHealth;
 		}
 	}
 
 	return BestTarget;
+}
+
+bool ASCTDDefenseTurret::IsBetterTarget(ABaseMonster* Candidate, ABaseMonster* CurrentBest, int32 CandidateTileDistance, int32 BestTileDistance) const
+{
+	if (!Candidate)
+	{
+		return false;
+	}
+	if (!CurrentBest)
+	{
+		return true;
+	}
+
+	switch (TargetingAI)
+	{
+	case ESCTDTargetingAI::Sniper:
+		return CandidateTileDistance > BestTileDistance;
+	case ESCTDTargetingAI::Greedy:
+		return Candidate->GetCurrentHealth() < CurrentBest->GetCurrentHealth();
+	case ESCTDTargetingAI::Potato:
+		return Candidate->GetCurrentHealth() > CurrentBest->GetCurrentHealth();
+	case ESCTDTargetingAI::Chaser:
+		return Candidate->GetMoveSpeedStat() > CurrentBest->GetMoveSpeedStat();
+	case ESCTDTargetingAI::Revenge:
+		return Candidate->GetThreatAttackDamage() > CurrentBest->GetThreatAttackDamage();
+	case ESCTDTargetingAI::Closer:
+	default:
+		return CandidateTileDistance < BestTileDistance;
+	}
 }
 
 int32 ASCTDDefenseTurret::GetTileDistanceToMonster(const ABaseMonster* Monster) const
@@ -191,6 +243,27 @@ int32 ASCTDDefenseTurret::GetTileDistanceToMonster(const ABaseMonster* Monster) 
 
 	const int32 DeltaQ = TurretSlot.Q - MonsterSlot.Q;
 	const int32 DeltaR = TurretSlot.R - MonsterSlot.R;
+	const int32 DeltaS = -DeltaQ - DeltaR;
+	return FMath::Max3(FMath::Abs(DeltaQ), FMath::Abs(DeltaR), FMath::Abs(DeltaS));
+}
+
+int32 ASCTDDefenseTurret::GetTileDistanceBetweenActors(const AActor* FirstActor, const AActor* SecondActor) const
+{
+	if (!FirstActor || !SecondActor || !HexGridManager)
+	{
+		return -1;
+	}
+
+	FHexTileSlot FirstSlot;
+	FHexTileSlot SecondSlot;
+	if (!HexGridManager->FindTileSlotAtWorldLocation(FirstActor->GetActorLocation(), FirstSlot)
+		|| !HexGridManager->FindTileSlotAtWorldLocation(SecondActor->GetActorLocation(), SecondSlot))
+	{
+		return -1;
+	}
+
+	const int32 DeltaQ = FirstSlot.Q - SecondSlot.Q;
+	const int32 DeltaR = FirstSlot.R - SecondSlot.R;
 	const int32 DeltaS = -DeltaQ - DeltaR;
 	return FMath::Max3(FMath::Abs(DeltaQ), FMath::Abs(DeltaR), FMath::Abs(DeltaS));
 }
@@ -343,15 +416,21 @@ void ASCTDDefenseTurret::ShowStatsPopup()
 	{
 		FSCTDTurretPopupStats PopupStats;
 		PopupStats.DisplayName = DisplayName;
+		PopupStats.MountType = MountType;
 		PopupStats.MaxHealth = MaxHealth;
 		PopupStats.Defense = Defense;
+		PopupStats.SelfRepairPerSecond = SelfRepairPerSecond;
 		PopupStats.MinAttackDamage = MinAttackDamage;
 		PopupStats.MaxAttackDamage = MaxAttackDamage;
 		PopupStats.AttackSpeed = AttackSpeed;
 		PopupStats.AttackRangeTiles = AttackRangeTiles;
+		PopupStats.AreaAttackRangeTiles = AreaAttackRangeTiles;
+		PopupStats.CriticalChance = CriticalChance;
+		PopupStats.CriticalDamageMultiplier = CriticalDamageMultiplier;
 		PopupStats.AttackAttribute = AttackAttribute;
 		PopupStats.StatusEffectChances = StatusEffectChances;
 		PopupStats.AIProfileId = AIProfileId;
+		PopupStats.TargetingAI = TargetingAI;
 		PopupStats.BasePartName = BasePartName;
 		PopupStats.WeaponPartName = WeaponPartName;
 		PopupStats.ControlPartName = ControlPartName;
@@ -384,7 +463,52 @@ float ASCTDDefenseTurret::RollAttackDamage() const
 	{
 		return 0.0f;
 	}
-	return FMath::FRandRange(SafeMinDamage, SafeMaxDamage);
+	float Damage = FMath::FRandRange(SafeMinDamage, SafeMaxDamage);
+	switch (AttackAttribute)
+	{
+	case ESCTDAttackAttribute::Physical:
+		Damage *= 1.0f + FMath::Max(0.0f, PhysicalDamageBonusRatio);
+		break;
+	case ESCTDAttackAttribute::Fire:
+		Damage *= 1.0f + FMath::Max(0.0f, FireDamageBonusRatio);
+		break;
+	case ESCTDAttackAttribute::Lightning:
+		Damage *= 1.0f + FMath::Max(0.0f, LightningDamageBonusRatio);
+		break;
+	case ESCTDAttackAttribute::Frost:
+		Damage *= 1.0f + FMath::Max(0.0f, FrostDamageBonusRatio);
+		break;
+	default:
+		break;
+	}
+	return Damage;
+}
+
+float ASCTDDefenseTurret::ApplyCriticalRoll(float DamageAmount) const
+{
+	if (DamageAmount <= 0.0f || CriticalChance <= 0.0f)
+	{
+		return DamageAmount;
+	}
+
+	return FMath::FRand() <= FMath::Clamp(CriticalChance, 0.0f, 1.0f)
+		? DamageAmount * FMath::Max(1.0f, CriticalDamageMultiplier)
+		: DamageAmount;
+}
+
+float ASCTDDefenseTurret::CalculateDefenseDamageMultiplier() const
+{
+	return FMath::Pow(0.9f, FMath::Max(0.0f, Defense) / 10.0f);
+}
+
+void ASCTDDefenseTurret::ApplySelfRepair(float DeltaSeconds)
+{
+	if (SelfRepairPerSecond <= 0.0f || CurrentHealth <= 0.0f || CurrentHealth >= MaxHealth)
+	{
+		return;
+	}
+
+	CurrentHealth = FMath::Min(MaxHealth, CurrentHealth + SelfRepairPerSecond * FMath::Max(0.0f, DeltaSeconds));
 }
 
 void ASCTDDefenseTurret::RollStatusEffectsForTarget(ABaseMonster* Target) const
@@ -404,6 +528,16 @@ void ASCTDDefenseTurret::RollStatusEffectsForTarget(ABaseMonster* Target) const
 		const float FinalChance = StatusEffectChance.GetFinalChance();
 		if (FinalChance > 0.0f && FMath::FRand() <= FinalChance)
 		{
+			for (const FSCTDStatusEffectSpec& StatusEffectSpec : StatusEffectSpecs)
+			{
+				if (StatusEffectSpec.EffectType == StatusEffectChance.EffectType
+					&& IsStatusEffectCompatibleWithAttribute(AttackAttribute, StatusEffectSpec.EffectType))
+				{
+					Target->ApplyStatusEffect(StatusEffectSpec);
+					break;
+				}
+			}
+
 			UE_LOG(LogSCTDDefenseTurret, VeryVerbose, TEXT("%s rolled status effect %d on %s chance=%.3f"),
 				*GetNameSafe(this),
 				static_cast<int32>(StatusEffectChance.EffectType),

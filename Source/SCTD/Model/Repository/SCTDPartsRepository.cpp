@@ -29,6 +29,11 @@ FGuid USCTDPartsRepository::AddPart(const FSCTDOwnedTurretPartRecord& PartRecord
 
 FGuid USCTDPartsRepository::AddPartByDefinitionId(FName DefinitionId, int32 RandomOptionCount, bool bSaveImmediately)
 {
+	return AddPartByDefinitionIdAndRarity(DefinitionId, ESCTDItemRarity::Common, RandomOptionCount, FLinearColor::White, bSaveImmediately);
+}
+
+FGuid USCTDPartsRepository::AddPartByDefinitionIdAndRarity(FName DefinitionId, ESCTDItemRarity Rarity, int32 RandomOptionCount, const FLinearColor& RarityColor, bool bSaveImmediately)
+{
 	USCTDUserSaveGame* SaveGame = UserRepository ? UserRepository->GetSaveGame() : nullptr;
 	USCTDPartDefinitionRepository* DefinitionRepository = UserRepository ? UserRepository->GetPartDefinitionRepository() : nullptr;
 	if (!SaveGame || !DefinitionRepository || DefinitionId.IsNone())
@@ -42,9 +47,10 @@ FGuid USCTDPartsRepository::AddPartByDefinitionId(FName DefinitionId, int32 Rand
 		return FGuid();
 	}
 
-	const TArray<FSCTDRolledTurretPartOption> RolledOptions = DefinitionRepository->RollOptions(
+	const TArray<FSCTDRolledTurretPartOption> RolledOptions = DefinitionRepository->RollOptionsForRarity(
 		Definition.OptionPoolId,
 		Definition.PartType,
+		Rarity,
 		RandomOptionCount);
 
 	FSCTDOwnedTurretPartRecord NewRecord;
@@ -53,6 +59,8 @@ FGuid USCTDPartsRepository::AddPartByDefinitionId(FName DefinitionId, int32 Rand
 		return FGuid();
 	}
 
+	NewRecord.Rarity = Rarity;
+	NewRecord.RarityColor = RarityColor;
 	SaveGame->OwnedParts.Add(NewRecord);
 	if (bSaveImmediately && UserRepository)
 	{

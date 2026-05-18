@@ -10,6 +10,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Model/Repository/SCTDDeckRepository.h"
 #include "Model/Repository/SCTDPartsRepository.h"
+#include "Model/Repository/SCTDPartDefinitionRepository.h"
 #include "Model/Repository/SCTDUserRepository.h"
 #include "Model/Repository/SCTDUserSaveGame.h"
 #include "Misc/DateTime.h"
@@ -274,6 +275,45 @@ void ADefenseManager::TickDefenseResult()
 	}
 }
 
+void ADefenseManager::RollMonsterItemDrop(ABaseMonster* Monster, float DropRate)
+{
+	if (!Monster || FMath::FRand() > FMath::Clamp(DropRate, 0.0f, 1.0f))
+	{
+		return;
+	}
+
+	EnsureUserRepository();
+	USCTDPartsRepository* PartsRepository = UserRepository ? UserRepository->GetPartsRepository() : nullptr;
+	USCTDPartDefinitionRepository* DefinitionRepository = UserRepository ? UserRepository->GetPartDefinitionRepository() : nullptr;
+	if (!PartsRepository || !DefinitionRepository)
+	{
+		return;
+	}
+
+	const FSCTDItemRarityDefinitionRow RarityDefinition = DefinitionRepository->RollRarity();
+	if (RarityDefinition.Rarity == ESCTDItemRarity::NoDrop)
+	{
+		return;
+	}
+
+	const ESCTDTurretPartType PartType = static_cast<ESCTDTurretPartType>(FMath::RandRange(0, 2));
+	const TArray<FSCTDTurretPartDefinitionRow> Definitions = DefinitionRepository->GetPartDefinitionsByType(PartType);
+	if (Definitions.Num() == 0)
+	{
+		return;
+	}
+
+	const FSCTDTurretPartDefinitionRow& SelectedDefinition = Definitions[FMath::RandRange(0, Definitions.Num() - 1)];
+	const int32 OptionCount = FMath::RandRange(
+		FMath::Max(0, RarityDefinition.MinOptionCount),
+		FMath::Max(RarityDefinition.MinOptionCount, RarityDefinition.MaxOptionCount));
+
+	if (PartsRepository->AddPartByDefinitionIdAndRarity(SelectedDefinition.DefinitionId, RarityDefinition.Rarity, OptionCount, RarityDefinition.DisplayColor, false).IsValid())
+	{
+		UserRepository->Save();
+	}
+}
+
 void ADefenseManager::TickConstruction(float DeltaSeconds)
 {
 	if (!bConstructionActive)
@@ -435,21 +475,10 @@ bool ADefenseManager::TryGetSelectedDeckTurret(FSCTDPreparedTurretRecord& OutTur
 		return false;
 	}
 
-	auto NormalizeRuntimePart = [](FSCTDOwnedTurretPartRecord& PartRecord)
+	if (OutBasePart.MountType != OutWeaponPart.MountType)
 	{
-		if (PartRecord.DefinitionId == TEXT("mock_base_bulwark")) { PartRecord.BuildTimeSeconds = 6.0f; }
-		else if (PartRecord.DefinitionId == TEXT("mock_base_light")) { PartRecord.BuildTimeSeconds = 3.5f; }
-		else if (PartRecord.DefinitionId == TEXT("mock_base_fortress")) { PartRecord.BuildTimeSeconds = 9.0f; }
-		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rifle")) { PartRecord.BuildTimeSeconds = 4.5f; PartRecord.AttackRange = 4.0f; PartRecord.MinAttackDamage = 16.0f; PartRecord.MaxAttackDamage = 24.0f; }
-		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rail")) { PartRecord.BuildTimeSeconds = 7.0f; PartRecord.AttackRange = 2.0f; PartRecord.MinAttackDamage = 42.0f; PartRecord.MaxAttackDamage = 54.0f; }
-		else if (PartRecord.DefinitionId == TEXT("mock_weapon_flak")) { PartRecord.BuildTimeSeconds = 5.5f; PartRecord.AttackRange = 6.0f; PartRecord.MinAttackDamage = 22.0f; PartRecord.MaxAttackDamage = 34.0f; }
-		else if (PartRecord.DefinitionId == TEXT("mock_control_focus")) { PartRecord.BuildTimeSeconds = 3.0f; PartRecord.AIProfileId = TEXT("Nearest"); }
-		else if (PartRecord.DefinitionId == TEXT("mock_control_swarm")) { PartRecord.BuildTimeSeconds = 4.0f; PartRecord.AIProfileId = TEXT("MaxHealth"); }
-		else if (PartRecord.DefinitionId == TEXT("mock_control_elite")) { PartRecord.BuildTimeSeconds = 5.0f; PartRecord.AIProfileId = TEXT("MinHealth"); }
-	};
-	NormalizeRuntimePart(OutBasePart);
-	NormalizeRuntimePart(OutWeaponPart);
-	NormalizeRuntimePart(OutControlPart);
+		return false;
+	}
 	return true;
 }
 

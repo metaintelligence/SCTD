@@ -56,18 +56,31 @@ private:
 	FString ControlPartName;
 	float MaxHealth = 0.0f;
 	float CurrentHealth = 0.0f;
+	ESCTDTurretMountType MountType = ESCTDTurretMountType::Tower;
 	float Defense = 0.0f;
+	float SelfRepairPerSecond = 0.0f;
 	float MinAttackDamage = 0.0f;
 	float MaxAttackDamage = 0.0f;
 	float AttackSpeed = 0.0f;
+	float AreaAttackRangeTiles = 0.0f;
+	float CriticalChance = 0.0f;
+	float CriticalDamageMultiplier = 1.5f;
+	float PhysicalDamageBonusRatio = 0.0f;
+	float FireDamageBonusRatio = 0.0f;
+	float LightningDamageBonusRatio = 0.0f;
+	float FrostDamageBonusRatio = 0.0f;
 	ESCTDAttackAttribute AttackAttribute = ESCTDAttackAttribute::Physical;
 	TArray<FSCTDStatusEffectChance> StatusEffectChances;
+	TArray<FSCTDStatusEffectSpec> StatusEffectSpecs;
 	FName AIProfileId = NAME_None;
+	ESCTDTargetingAI TargetingAI = ESCTDTargetingAI::Closer;
 	float AttackCooldownRemaining = 0.0f;
 	bool bDynamicDialogOpen = false;
 
 	ABaseMonster* FindTarget() const;
+	bool IsBetterTarget(ABaseMonster* Candidate, ABaseMonster* CurrentBest, int32 CandidateTileDistance, int32 BestTileDistance) const;
 	int32 GetTileDistanceToMonster(const ABaseMonster* Monster) const;
+	int32 GetTileDistanceBetweenActors(const AActor* FirstActor, const AActor* SecondActor) const;
 	void CacheHexGridManager();
 	void ConfigureHoverCollision();
 	void UpdateDynamicDialogState();
@@ -76,6 +89,9 @@ private:
 	void ShowStatsPopup();
 	void HideStatsPopup();
 	float RollAttackDamage() const;
+	float ApplyCriticalRoll(float DamageAmount) const;
+	float CalculateDefenseDamageMultiplier() const;
+	void ApplySelfRepair(float DeltaSeconds);
 	void RollStatusEffectsForTarget(ABaseMonster* Target) const;
 
 	UFUNCTION()

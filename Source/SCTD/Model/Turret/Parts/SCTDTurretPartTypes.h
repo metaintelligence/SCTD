@@ -12,6 +12,25 @@ enum class ESCTDTurretPartGrade : uint8
 	Heroic UMETA(DisplayName = "Heroic")
 };
 
+UENUM(BlueprintType)
+enum class ESCTDTargetingAI : uint8
+{
+	Closer UMETA(DisplayName = "CLOSER"),
+	Sniper UMETA(DisplayName = "SNIPER"),
+	Greedy UMETA(DisplayName = "GREEDY"),
+	Potato UMETA(DisplayName = "POTATO"),
+	Chaser UMETA(DisplayName = "CHASER"),
+	Revenge UMETA(DisplayName = "REVENGE")
+};
+
+UENUM(BlueprintType)
+enum class ESCTDTurretMountType : uint8
+{
+	Tower UMETA(DisplayName = "TOWER"),
+	Cannon UMETA(DisplayName = "CANNON"),
+	Arm UMETA(DisplayName = "ARM")
+};
+
 USTRUCT(BlueprintType)
 struct FSCTDTurretPartOption
 {

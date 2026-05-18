@@ -101,6 +101,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Defense|Result")
 	void RegisterDamageDealt(AActor* DamageCauser, float DamageAmount);
 
+	UFUNCTION(BlueprintCallable, Category = "Defense|Reward")
+	void RollMonsterItemDrop(ABaseMonster* Monster, float DropRate);
+
 	UFUNCTION(BlueprintPure, Category = "Defense|Flow")
 	float GetDefenseElapsedSeconds() const { return DefenseElapsedSeconds; }
 

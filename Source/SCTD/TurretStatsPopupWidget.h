@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Model/Combat/SCTDAttackTypes.h"
+#include "Model/Turret/Parts/SCTDTurretPartTypes.h"
 #include "TurretStatsPopupWidget.generated.h"
 
 USTRUCT(BlueprintType)
@@ -17,7 +18,13 @@ struct FSCTDTurretPopupStats
 	float MaxHealth = 0.0f;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
+	ESCTDTurretMountType MountType = ESCTDTurretMountType::Tower;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
 	float Defense = 0.0f;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
+	float SelfRepairPerSecond = 0.0f;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
 	float MinAttackDamage = 0.0f;
@@ -32,7 +39,19 @@ struct FSCTDTurretPopupStats
 	float AttackRangeTiles = 0.0f;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
+	float AreaAttackRangeTiles = 0.0f;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
+	float CriticalChance = 0.0f;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
+	float CriticalDamageMultiplier = 1.5f;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
 	FName AIProfileId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
+	ESCTDTargetingAI TargetingAI = ESCTDTargetingAI::Closer;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Turret|Popup")
 	ESCTDAttackAttribute AttackAttribute = ESCTDAttackAttribute::Physical;
@@ -65,6 +84,7 @@ private:
 	FSCTDTurretPopupStats Stats;
 
 	TSharedRef<SWidget> BuildStatRow(const FString& Label, const FString& Value) const;
+	FString BuildMountTypeText() const;
 	FString BuildAIText() const;
 	FString BuildAttackAttributeText() const;
 };

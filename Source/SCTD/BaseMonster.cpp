@@ -145,6 +145,7 @@ void ABaseMonster::Tick(float DeltaSeconds)
 		return;
 	}
 
+	TickStatusEffects(DeltaSeconds);
 	TickAttackState(DeltaSeconds);
 	UpdateMovementTargetFromCurrentTile();
 
@@ -168,7 +169,7 @@ void ABaseMonster::Tick(float DeltaSeconds)
 		bLoggedMissingMoveTarget = true;
 	}
 
-	if (AttackCooldownRemaining <= 0.0f && IsTargetInAttackRange(Action.AttackTarget))
+	if (CanPerformAttack() && AttackCooldownRemaining <= 0.0f && IsTargetInAttackRange(Action.AttackTarget))
 	{
 		TryStartAttack(Action.AttackTarget);
 		ClampHorizontalSpeed(0.0f);
@@ -538,8 +539,63 @@ void ABaseMonster::GrantScrapReward()
 			{
 				DefenseManager->AddExperience(ExpReward);
 			}
+			DefenseManager->RollMonsterItemDrop(this, ItemDropRate);
 			bKillRewardsGranted = true;
 			return;
+		}
+	}
+}
+
+void ABaseMonster::ApplyStatusEffect(const FSCTDStatusEffectSpec& StatusEffectSpec)
+{
+	if (StatusEffectSpec.EffectType == ESCTDStatusEffectType::None || ActionState == EMonsterActionState::Die)
+	{
+		return;
+	}
+
+	FSCTDActiveStatusEffect ActiveEffect;
+	ActiveEffect.EffectType = StatusEffectSpec.EffectType;
+	ActiveEffect.RemainingSeconds = FMath::FRandRange(
+		FMath::Max(0.0f, StatusEffectSpec.MinDurationSeconds),
+		FMath::Max(StatusEffectSpec.MinDurationSeconds, StatusEffectSpec.MaxDurationSeconds));
+	ActiveEffect.Value = FMath::FRandRange(StatusEffectSpec.MinValue, StatusEffectSpec.MaxValue);
+
+	if (ActiveEffect.EffectType == ESCTDStatusEffectType::Stagger)
+	{
+		ClearTargetMoveTile();
+		PendingAttackTarget.Reset();
+		AttackMotionRemaining = 0.0f;
+		SetActionState(EMonsterActionState::Idle);
+	}
+
+	ActiveStatusEffects.Add(ActiveEffect);
+}
+
+void ABaseMonster::TickStatusEffects(float DeltaSeconds)
+{
+	if (ActiveStatusEffects.Num() == 0 || ActionState == EMonsterActionState::Die)
+	{
+		return;
+	}
+
+	for (int32 Index = ActiveStatusEffects.Num() - 1; Index >= 0; --Index)
+	{
+		FSCTDActiveStatusEffect& ActiveEffect = ActiveStatusEffects[Index];
+		ActiveEffect.RemainingSeconds -= DeltaSeconds;
+
+		if (ActiveEffect.EffectType == ESCTDStatusEffectType::Ignite && StatusComponent)
+		{
+			const float DamagePerSecond = StatusComponent->GetCurrentHealth() * FMath::Max(0.0f, ActiveEffect.Value);
+			ApplyDamageToMonster(DamagePerSecond * DeltaSeconds);
+		}
+		else if (ActiveEffect.EffectType == ESCTDStatusEffectType::Execute && StatusComponent && StatusComponent->GetHealthRatio() <= FMath::Max(0.0f, ActiveEffect.Value))
+		{
+			ApplyDamageToMonster(StatusComponent->GetCurrentHealth());
+		}
+
+		if (ActiveEffect.RemainingSeconds <= 0.0f)
+		{
+			ActiveStatusEffects.RemoveAt(Index);
 		}
 	}
 }
@@ -1002,7 +1058,41 @@ void ABaseMonster::UpdateVisualMovementDecision(float MaxSpeed)
 
 float ABaseMonster::GetMaxMoveSpeed() const
 {
-	return BaseMoveSpeed * MoveSpeed;
+	return BaseMoveSpeed * MoveSpeed * GetStatusMoveSpeedMultiplier();
+}
+
+bool ABaseMonster::CanPerformAttack() const
+{
+	for (const FSCTDActiveStatusEffect& ActiveEffect : ActiveStatusEffects)
+	{
+		if (ActiveEffect.EffectType == ESCTDStatusEffectType::Concussion && ActiveEffect.RemainingSeconds > 0.0f)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+float ABaseMonster::GetStatusMoveSpeedMultiplier() const
+{
+	float Multiplier = 1.0f;
+	for (const FSCTDActiveStatusEffect& ActiveEffect : ActiveStatusEffects)
+	{
+		if (ActiveEffect.RemainingSeconds <= 0.0f)
+		{
+			continue;
+		}
+
+		if (ActiveEffect.EffectType == ESCTDStatusEffectType::Freeze)
+		{
+			return 0.0f;
+		}
+		if (ActiveEffect.EffectType == ESCTDStatusEffectType::Chill)
+		{
+			Multiplier *= 1.0f - FMath::Clamp(ActiveEffect.Value, 0.0f, 1.0f);
+		}
+	}
+	return FMath::Max(0.0f, Multiplier);
 }
 
 float ABaseMonster::GetAccelerationToReachMaxSpeed() const

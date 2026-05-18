@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+#include "Model/Combat/SCTDAttackTypes.h"
 #include "BaseMonster.generated.h"
 
 class AHexGridManager;
@@ -60,6 +61,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Monster|Vitals")
 	void ApplyDamageToMonster(float DamageAmount);
 
+	UFUNCTION(BlueprintCallable, Category = "Monster|Status Effect")
+	void ApplyStatusEffect(const FSCTDStatusEffectSpec& StatusEffectSpec);
+
 	UFUNCTION(BlueprintPure, Category = "Monster|Combat")
 	EMonsterActionState GetActionState() const { return ActionState; }
 
@@ -68,6 +72,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Monster|Combat")
 	bool IsTargetInAttackRange(const AActor* Target) const;
+
+	UFUNCTION(BlueprintPure, Category = "Monster|Movement")
+	float GetMoveSpeedStat() const { return MoveSpeed; }
+
+	UFUNCTION(BlueprintPure, Category = "Monster|Combat")
+	float GetThreatAttackDamage() const { return FMath::Max(MinAttackDamage, MaxAttackDamage); }
 
 	UFUNCTION(BlueprintPure, Category = "Monster|Grid")
 	AHexGridManager* GetHexGridManager() const { return HexGridManager; }
@@ -123,6 +133,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Reward", meta = (ClampMin = "0", UIMin = "0"))
 	int32 ExpReward = 100;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Reward", meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+	float ItemDropRate = 0.10f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Monster|Physics", meta = (ClampMin = "0.1", UIMin = "0.1"))
 	float MovementMass = 100.0f;
@@ -223,6 +236,7 @@ private:
 	float DeathFadeElapsedSeconds = 0.0f;
 	TArray<TWeakObjectPtr<ABaseMonster>> SideForceContacts;
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> DeathFadeMaterialInstances;
+	TArray<FSCTDActiveStatusEffect> ActiveStatusEffects;
 	FVector CachedSideForceDirection = FVector::ZeroVector;
 	float LastSideForceDecisionTimeSeconds = -FLT_MAX;
 	float LastVisualMovementDecisionTimeSeconds = -FLT_MAX;
@@ -244,6 +258,7 @@ private:
 	void ConfigureAnimationRootMotion();
 	void ConfigureWalkingAnimationRootMotion();
 	void TickAttackState(float DeltaSeconds);
+	void TickStatusEffects(float DeltaSeconds);
 	void TickDeathState(float DeltaSeconds);
 	void StartDeath();
 	void GrantScrapReward();
@@ -263,6 +278,8 @@ private:
 	void ApplyMovementForce(const FVector& MoveDirection);
 	void UpdateVisualMovementDecision(float MaxSpeed);
 	float GetMaxMoveSpeed() const;
+	bool CanPerformAttack() const;
+	float GetStatusMoveSpeedMultiplier() const;
 	float GetAccelerationToReachMaxSpeed() const;
 	void ClampHorizontalSpeed(float MaxSpeed);
 	bool CanMoveToLocation(const FVector& TargetLocation) const;

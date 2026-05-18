@@ -914,15 +914,21 @@ void USCTDHUDWidget::ShowBuildTurretStatsPopup(int32 TurretIndex)
 
 	FSCTDTurretPopupStats PopupStats;
 	PopupStats.DisplayName = TurretRecord.DisplayName;
+	PopupStats.MountType = BasePart.MountType;
 	PopupStats.MaxHealth = BasePart.BaseHealth;
 	PopupStats.Defense = BasePart.Defense;
+	PopupStats.SelfRepairPerSecond = BasePart.SelfRepairPerSecond;
 	PopupStats.MinAttackDamage = WeaponPart.MinAttackDamage;
 	PopupStats.MaxAttackDamage = WeaponPart.MaxAttackDamage;
 	PopupStats.AttackSpeed = WeaponPart.AttackSpeed;
 	PopupStats.AttackRangeTiles = WeaponPart.AttackRange;
+	PopupStats.AreaAttackRangeTiles = WeaponPart.AreaAttackRange;
+	PopupStats.CriticalChance = WeaponPart.CriticalChance;
+	PopupStats.CriticalDamageMultiplier = WeaponPart.CriticalDamageMultiplier;
 	PopupStats.AttackAttribute = WeaponPart.AttackAttribute;
 	PopupStats.StatusEffectChances = WeaponPart.StatusEffectChances;
 	PopupStats.AIProfileId = ControlPart.AIProfileId;
+	PopupStats.TargetingAI = ControlPart.TargetingAI;
 	PopupStats.BasePartName = BasePart.DisplayName;
 	PopupStats.WeaponPartName = WeaponPart.DisplayName;
 	PopupStats.ControlPartName = ControlPart.DisplayName;

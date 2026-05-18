@@ -64,128 +64,181 @@ void ALabSceneRoot::EnsureLabWidget()
 void ALabSceneRoot::SeedMockPartsIfNeeded()
 {
 	USCTDPartsRepository* PartsRepository = UserRepository ? UserRepository->GetPartsRepository() : nullptr;
-	if (!PartsRepository)
+	USCTDUserSaveGame* SaveGame = UserRepository ? UserRepository->GetSaveGame() : nullptr;
+	if (!PartsRepository || !SaveGame)
 	{
 		return;
 	}
 
-	auto NormalizeMockPart = [](FSCTDOwnedTurretPartRecord& PartRecord)
+	const auto IsLegacyMockPart = [](const FSCTDOwnedTurretPartRecord& PartRecord)
 	{
-		if (PartRecord.DefinitionId == TEXT("mock_base_bulwark"))
-		{
-			PartRecord.BuildTimeSeconds = 6.0f;
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_base_light"))
-		{
-			PartRecord.BuildTimeSeconds = 3.5f;
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_base_fortress"))
-		{
-			PartRecord.BuildTimeSeconds = 9.0f;
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rifle"))
-		{
-			PartRecord.BuildTimeSeconds = 4.5f;
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rail"))
-		{
-			PartRecord.BuildTimeSeconds = 7.0f;
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_weapon_flak"))
-		{
-			PartRecord.BuildTimeSeconds = 5.5f;
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_control_focus"))
-		{
-			PartRecord.BuildTimeSeconds = 3.0f;
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_control_swarm"))
-		{
-			PartRecord.BuildTimeSeconds = 4.0f;
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_control_elite"))
-		{
-			PartRecord.BuildTimeSeconds = 5.0f;
-		}
-
-		if (PartRecord.DefinitionId == TEXT("mock_weapon_rifle"))
-		{
-			PartRecord.AttackRange = 4.0f;
-			PartRecord.MinAttackDamage = 16.0f;
-			PartRecord.MaxAttackDamage = 24.0f;
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_weapon_rail"))
-		{
-			PartRecord.AttackRange = 2.0f;
-			PartRecord.MinAttackDamage = 42.0f;
-			PartRecord.MaxAttackDamage = 54.0f;
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_weapon_flak"))
-		{
-			PartRecord.AttackRange = 6.0f;
-			PartRecord.MinAttackDamage = 22.0f;
-			PartRecord.MaxAttackDamage = 34.0f;
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_control_focus"))
-		{
-			PartRecord.DisplayName = TEXT("Nearest AI");
-			PartRecord.AIProfileId = TEXT("Nearest");
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_control_swarm"))
-		{
-			PartRecord.DisplayName = TEXT("MaxHealth Target AI");
-			PartRecord.AIProfileId = TEXT("MaxHealth");
-		}
-		else if (PartRecord.DefinitionId == TEXT("mock_control_elite"))
-		{
-			PartRecord.DisplayName = TEXT("MinHealth Target AI");
-			PartRecord.AIProfileId = TEXT("MinHealth");
-		}
+		return PartRecord.DefinitionId.ToString().StartsWith(TEXT("mock_"));
 	};
+
+	const bool bHasLegacyMockParts = SaveGame->OwnedParts.ContainsByPredicate(IsLegacyMockPart);
+	if (bHasLegacyMockParts)
+	{
+		SaveGame->OwnedParts.RemoveAll(IsLegacyMockPart);
+		SaveGame->TurretDecks.Reset();
+	}
 
 	if (PartsRepository->GetOwnedPartCount() > 0)
 	{
-		if (USCTDUserSaveGame* SaveGame = UserRepository ? UserRepository->GetSaveGame() : nullptr)
+		if (bHasLegacyMockParts)
 		{
-			for (FSCTDOwnedTurretPartRecord& PartRecord : SaveGame->OwnedParts)
-			{
-				NormalizeMockPart(PartRecord);
-			}
 			UserRepository->Save();
 		}
 		return;
 	}
 
-	auto AddMockPart = [PartsRepository, NormalizeMockPart](ESCTDTurretPartType PartType, const TCHAR* DefinitionId, const TCHAR* DisplayName, int32 Cost, float BuildTime, float Health, float Defense, float Damage, float Speed, const TCHAR* AIProfile)
+	const FLinearColor LegendaryColor(0.84f, 0.62f, 1.0f, 1.0f);
+	auto AddLegendaryOption = [](FSCTDOwnedTurretPartRecord& PartRecord, FName OptionId, const FText& DisplayName, float Value)
 	{
-		FSCTDOwnedTurretPartRecord PartRecord;
-		PartRecord.DefinitionId = DefinitionId;
-		PartRecord.PartType = PartType;
-		PartRecord.DisplayName = DisplayName;
-		PartRecord.BuildCost = Cost;
-		PartRecord.BuildTimeSeconds = BuildTime;
-		PartRecord.BaseHealth = Health;
-		PartRecord.Defense = Defense;
-		PartRecord.MinAttackDamage = Damage;
-		PartRecord.MaxAttackDamage = Damage;
-		PartRecord.AttackSpeed = Speed;
-		PartRecord.AIProfileId = AIProfile;
-		NormalizeMockPart(PartRecord);
+		FSCTDTurretPartOption DisplayOption;
+		DisplayOption.OptionId = OptionId;
+		DisplayOption.DisplayName = DisplayName;
+		DisplayOption.Value = Value;
+		PartRecord.AdditionalOptions.Add(DisplayOption);
+
+		FSCTDRolledTurretPartOption RolledOption;
+		RolledOption.OptionId = OptionId;
+		RolledOption.Value = Value;
+		PartRecord.RolledOptions.Add(RolledOption);
+	};
+
+	auto MarkLegendary = [LegendaryColor](FSCTDOwnedTurretPartRecord& PartRecord)
+	{
+		PartRecord.Rarity = ESCTDItemRarity::Legendary;
+		PartRecord.RarityColor = LegendaryColor;
+	};
+
+	auto ApplyLegendaryMockOptions = [AddLegendaryOption](FSCTDOwnedTurretPartRecord& PartRecord)
+	{
+		TArray<int32> CandidateOptionIndexes;
+		const int32 OptionCount = FMath::RandRange(4, 5);
+
+		if (PartRecord.PartType == ESCTDTurretPartType::Base)
+		{
+			CandidateOptionIndexes = { 0, 1, 2, 3, 4, 5 };
+		}
+		else if (PartRecord.PartType == ESCTDTurretPartType::Weapon)
+		{
+			CandidateOptionIndexes = { 0, 1, 2, 3, 4 };
+		}
+		else
+		{
+			CandidateOptionIndexes = { 0, 1, 2, 3, 4 };
+		}
+
+		for (int32 Index = CandidateOptionIndexes.Num() - 1; Index > 0; --Index)
+		{
+			const int32 SwapIndex = FMath::RandRange(0, Index);
+			CandidateOptionIndexes.Swap(Index, SwapIndex);
+		}
+
+		for (int32 Index = 0; Index < FMath::Min(OptionCount, CandidateOptionIndexes.Num()); ++Index)
+		{
+			const int32 OptionIndex = CandidateOptionIndexes[Index];
+			const float Ratio = FMath::FRandRange(0.20f, 0.30f);
+			if (PartRecord.PartType == ESCTDTurretPartType::Base)
+			{
+				if (OptionIndex == 0) { PartRecord.BaseHealth *= 1.0f + Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseHealth"), FText::FromString(TEXT("Health +%")), Ratio); }
+				else if (OptionIndex == 1) { PartRecord.Defense *= 1.0f + Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseDefense"), FText::FromString(TEXT("Defense +%")), Ratio); }
+				else if (OptionIndex == 2) { PartRecord.SelfRepairPerSecond *= 1.0f + Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseSelfRepair"), FText::FromString(TEXT("Repair +%")), Ratio); }
+				else if (OptionIndex == 3) { PartRecord.AttackSpeed += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseAttackSpeed"), FText::FromString(TEXT("Attack Speed +%")), Ratio); }
+				else if (OptionIndex == 4) { PartRecord.CriticalChance += FMath::FRandRange(0.10f, 0.20f); AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalChance"), FText::FromString(TEXT("Critical Chance +")), PartRecord.CriticalChance); }
+				else if (OptionIndex == 5) { PartRecord.CriticalDamageMultiplier += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalDamage"), FText::FromString(TEXT("Critical Damage +")), Ratio); }
+			}
+			else if (PartRecord.PartType == ESCTDTurretPartType::Weapon)
+			{
+				if (OptionIndex == 0) { PartRecord.AttackRange += 2.0f; AddLegendaryOption(PartRecord, TEXT("IncreaseAttackRange"), FText::FromString(TEXT("Range +2")), 2.0f); }
+				else if (OptionIndex == 1) { PartRecord.PhysicalDamageBonusRatio += Ratio; AddLegendaryOption(PartRecord, TEXT("PhysicalDamageBonus"), FText::FromString(TEXT("Physical Damage +%")), Ratio); }
+				else if (OptionIndex == 2) { PartRecord.AttackSpeed *= 1.0f + Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseAttackSpeed"), FText::FromString(TEXT("Attack Speed +%")), Ratio); }
+				else if (OptionIndex == 3) { PartRecord.AreaAttackRange += 2.0f; AddLegendaryOption(PartRecord, TEXT("IncreaseAreaRange"), FText::FromString(TEXT("Area +2")), 2.0f); }
+				else if (OptionIndex == 4) { PartRecord.CriticalChance += FMath::FRandRange(0.10f, 0.20f); AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalChance"), FText::FromString(TEXT("Critical Chance +")), PartRecord.CriticalChance); }
+			}
+			else
+			{
+				if (OptionIndex == 0) { PartRecord.PhysicalDamageBonusRatio += Ratio; AddLegendaryOption(PartRecord, TEXT("PhysicalDamageBonus"), FText::FromString(TEXT("Physical Damage +%")), Ratio); }
+				else if (OptionIndex == 1) { PartRecord.BaseHealth += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseHealth"), FText::FromString(TEXT("Health +%")), Ratio); }
+				else if (OptionIndex == 2) { PartRecord.Defense += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseDefense"), FText::FromString(TEXT("Defense +%")), Ratio); }
+				else if (OptionIndex == 3) { PartRecord.CriticalChance += FMath::FRandRange(0.10f, 0.20f); AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalChance"), FText::FromString(TEXT("Critical Chance +")), PartRecord.CriticalChance); }
+				else if (OptionIndex == 4) { PartRecord.CriticalDamageMultiplier += Ratio; AddLegendaryOption(PartRecord, TEXT("IncreaseCriticalDamage"), FText::FromString(TEXT("Critical Damage +")), Ratio); }
+			}
+		}
+	};
+
+	auto AddPart = [PartsRepository, MarkLegendary, ApplyLegendaryMockOptions](FSCTDOwnedTurretPartRecord PartRecord)
+	{
+		MarkLegendary(PartRecord);
+		ApplyLegendaryMockOptions(PartRecord);
 		PartsRepository->AddPart(PartRecord);
 	};
 
-	// Zombie baseline: HP 40, damage 2, cooldown 7s. Mock turret parts are roughly tuned around 10x threat scale.
-	AddMockPart(ESCTDTurretPartType::Base, TEXT("mock_base_bulwark"), TEXT("Bulwark Frame"), 120, 12.0f, 400.0f, 20.0f, 0.0f, 0.0f, TEXT(""));
-	AddMockPart(ESCTDTurretPartType::Base, TEXT("mock_base_light"), TEXT("Rapid Scaffold"), 80, 7.0f, 260.0f, 8.0f, 0.0f, 0.0f, TEXT(""));
-	AddMockPart(ESCTDTurretPartType::Base, TEXT("mock_base_fortress"), TEXT("Fortress Chassis"), 180, 18.0f, 620.0f, 36.0f, 0.0f, 0.0f, TEXT(""));
+	auto MakeBasePart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, ESCTDTurretMountType MountType, float Health, float Defense, float SelfRepair, int32 BuildCost, float BuildTime)
+	{
+		FSCTDOwnedTurretPartRecord PartRecord;
+		PartRecord.DefinitionId = DefinitionId;
+		PartRecord.PartType = ESCTDTurretPartType::Base;
+		PartRecord.DisplayName = DisplayName;
+		PartRecord.MountType = MountType;
+		PartRecord.BaseHealth = Health;
+		PartRecord.Defense = Defense;
+		PartRecord.SelfRepairPerSecond = SelfRepair;
+		PartRecord.BuildCost = BuildCost;
+		PartRecord.BuildTimeSeconds = BuildTime;
+		PartRecord.CriticalDamageMultiplier = 1.5f;
+		return PartRecord;
+	};
 
-	AddMockPart(ESCTDTurretPartType::Weapon, TEXT("mock_weapon_rifle"), TEXT("Auto Rifle Mount"), 110, 9.0f, 0.0f, 0.0f, 20.0f, 1.4f, TEXT(""));
-	AddMockPart(ESCTDTurretPartType::Weapon, TEXT("mock_weapon_rail"), TEXT("Rail Spike Array"), 170, 14.0f, 0.0f, 0.0f, 48.0f, 0.45f, TEXT(""));
-	AddMockPart(ESCTDTurretPartType::Weapon, TEXT("mock_weapon_flak"), TEXT("Flak Burst Pod"), 145, 11.0f, 0.0f, 0.0f, 28.0f, 0.9f, TEXT(""));
+	auto MakeWeaponPart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, ESCTDTurretMountType MountType, float MinDamage, float MaxDamage, float AttackSpeed, float AttackRange, float AreaRange, float CriticalChance, float CriticalDamageBonus, float StatusChance, int32 BuildCost, float BuildTime)
+	{
+		FSCTDOwnedTurretPartRecord PartRecord;
+		PartRecord.DefinitionId = DefinitionId;
+		PartRecord.PartType = ESCTDTurretPartType::Weapon;
+		PartRecord.DisplayName = DisplayName;
+		PartRecord.MountType = MountType;
+		PartRecord.MinAttackDamage = MinDamage;
+		PartRecord.MaxAttackDamage = MaxDamage;
+		PartRecord.AttackAttribute = ESCTDAttackAttribute::Physical;
+		PartRecord.AttackSpeed = AttackSpeed;
+		PartRecord.AttackRange = AttackRange;
+		PartRecord.AreaAttackRange = AreaRange;
+		PartRecord.CriticalChance = CriticalChance;
+		PartRecord.CriticalDamageMultiplier = 1.0f + CriticalDamageBonus;
+		PartRecord.BuildCost = BuildCost;
+		PartRecord.BuildTimeSeconds = BuildTime;
+		PartRecord.StatusEffectChances.Add({ ESCTDStatusEffectType::Destruction, StatusChance, 1.0f });
+		PartRecord.StatusEffectChances.Add({ ESCTDStatusEffectType::Concussion, StatusChance, 1.0f });
+		return PartRecord;
+	};
 
-	AddMockPart(ESCTDTurretPartType::Control, TEXT("mock_control_focus"), TEXT("Nearest AI"), 90, 6.0f, 0.0f, 0.0f, 0.0f, 0.0f, TEXT("Nearest"));
-	AddMockPart(ESCTDTurretPartType::Control, TEXT("mock_control_swarm"), TEXT("MaxHealth Target AI"), 115, 8.0f, 0.0f, 0.0f, 0.0f, 0.0f, TEXT("MaxHealth"));
-	AddMockPart(ESCTDTurretPartType::Control, TEXT("mock_control_elite"), TEXT("MinHealth Target AI"), 150, 10.0f, 0.0f, 0.0f, 0.0f, 0.0f, TEXT("MinHealth"));
+	auto MakeControlPart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, ESCTDTargetingAI TargetingAI)
+	{
+		FSCTDOwnedTurretPartRecord PartRecord;
+		PartRecord.DefinitionId = DefinitionId;
+		PartRecord.PartType = ESCTDTurretPartType::Control;
+		PartRecord.DisplayName = DisplayName;
+		PartRecord.TargetingAI = TargetingAI;
+		PartRecord.AIProfileId = DisplayName;
+		PartRecord.CriticalDamageMultiplier = 1.5f;
+		return PartRecord;
+	};
+
+	AddPart(MakeBasePart(TEXT("part_body_pylon"), TEXT("PYLON"), ESCTDTurretMountType::Tower, 400.0f, 10.0f, 1.0f, 100, 5.0f));
+	AddPart(MakeBasePart(TEXT("part_body_quirass"), TEXT("QUIRASS"), ESCTDTurretMountType::Arm, 600.0f, 20.0f, 2.0f, 100, 2.0f));
+	AddPart(MakeBasePart(TEXT("part_body_gunstock"), TEXT("GUNSTOCK"), ESCTDTurretMountType::Cannon, 200.0f, 10.0f, 1.0f, 100, 3.0f));
+
+	AddPart(MakeWeaponPart(TEXT("part_weapon_mortar"), TEXT("MORTAR"), ESCTDTurretMountType::Tower, 10.0f, 20.0f, 0.33f, 5.0f, 1.0f, 0.10f, 0.50f, 0.30f, 100, 5.0f));
+	AddPart(MakeWeaponPart(TEXT("part_weapon_minigun"), TEXT("MINIGUN"), ESCTDTurretMountType::Cannon, 4.0f, 6.0f, 3.0f, 3.0f, 0.0f, 0.20f, 0.50f, 0.10f, 100, 3.0f));
+	AddPart(MakeWeaponPart(TEXT("part_weapon_axe"), TEXT("AXE"), ESCTDTurretMountType::Arm, 9.0f, 11.0f, 1.0f, 1.0f, 0.0f, 0.20f, 0.50f, 0.20f, 100, 2.0f));
+
+	AddPart(MakeControlPart(TEXT("part_control_closer"), TEXT("CLOSER"), ESCTDTargetingAI::Closer));
+	AddPart(MakeControlPart(TEXT("part_control_sniper"), TEXT("SNIPER"), ESCTDTargetingAI::Sniper));
+	AddPart(MakeControlPart(TEXT("part_control_greedy"), TEXT("GREEDY"), ESCTDTargetingAI::Greedy));
+	AddPart(MakeControlPart(TEXT("part_control_potato"), TEXT("POTATO"), ESCTDTargetingAI::Potato));
+	AddPart(MakeControlPart(TEXT("part_control_chaser"), TEXT("CHASER"), ESCTDTargetingAI::Chaser));
+	AddPart(MakeControlPart(TEXT("part_control_revenge"), TEXT("REVENGE"), ESCTDTargetingAI::Revenge));
 
 	UserRepository->Save();
 }

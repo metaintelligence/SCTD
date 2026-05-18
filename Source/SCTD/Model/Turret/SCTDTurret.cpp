@@ -42,8 +42,10 @@ FSCTDTurretFinalStats USCTDTurret::GetFinalStats() const
 
 	if (BasePart)
 	{
+		FinalStats.MountType = BasePart->MountType;
 		FinalStats.MaxHealth = BasePart->BaseHealth;
 		FinalStats.Defense = BasePart->Defense;
+		FinalStats.SelfRepairPerSecond = BasePart->SelfRepairPerSecond;
 	}
 
 	if (WeaponPart)
@@ -52,13 +54,16 @@ FSCTDTurretFinalStats USCTDTurret::GetFinalStats() const
 		FinalStats.MaxAttackDamage = WeaponPart->MaxAttackDamage;
 		FinalStats.AttackSpeed = WeaponPart->AttackSpeed;
 		FinalStats.AttackRange = WeaponPart->AttackRange;
+		FinalStats.AreaAttackRange = WeaponPart->AreaAttackRange;
+		FinalStats.CriticalChance = WeaponPart->CriticalChance;
+		FinalStats.CriticalDamageMultiplier = WeaponPart->CriticalDamageMultiplier;
 		FinalStats.AttackAttribute = WeaponPart->AttackAttribute;
 		FinalStats.StatusEffectChances = WeaponPart->StatusEffectChances;
 	}
 
 	if (ControlPart)
 	{
-		FinalStats.AIProfileId = ControlPart->AIProfileId;
+		FinalStats.TargetingAI = ControlPart->TargetingAI;
 	}
 
 	return FinalStats;

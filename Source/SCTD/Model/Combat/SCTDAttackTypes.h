@@ -26,6 +26,23 @@ enum class ESCTDStatusEffectType : uint8
 	Freeze UMETA(DisplayName = "Freeze")
 };
 
+inline bool IsStatusEffectCompatibleWithAttribute(ESCTDAttackAttribute AttackAttribute, ESCTDStatusEffectType EffectType)
+{
+	switch (AttackAttribute)
+	{
+	case ESCTDAttackAttribute::Physical:
+		return EffectType == ESCTDStatusEffectType::Destruction || EffectType == ESCTDStatusEffectType::Concussion;
+	case ESCTDAttackAttribute::Fire:
+		return EffectType == ESCTDStatusEffectType::Ignite || EffectType == ESCTDStatusEffectType::Fire;
+	case ESCTDAttackAttribute::Lightning:
+		return EffectType == ESCTDStatusEffectType::Stagger || EffectType == ESCTDStatusEffectType::Execute;
+	case ESCTDAttackAttribute::Frost:
+		return EffectType == ESCTDStatusEffectType::Chill || EffectType == ESCTDStatusEffectType::Freeze;
+	default:
+		return false;
+	}
+}
+
 USTRUCT(BlueprintType)
 struct FSCTDAttackDamageRange
 {
@@ -97,6 +114,21 @@ struct FSCTDStatusEffectSpec
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack|Status Effect")
 	float MaxValue = 0.0f;
+};
+
+USTRUCT(BlueprintType)
+struct FSCTDActiveStatusEffect
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack|Status Effect")
+	ESCTDStatusEffectType EffectType = ESCTDStatusEffectType::None;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack|Status Effect")
+	float RemainingSeconds = 0.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack|Status Effect")
+	float Value = 0.0f;
 };
 
 USTRUCT(BlueprintType)
