@@ -210,9 +210,14 @@ TSharedRef<SWidget> UInventoryWidget::BuildHeader()
 
 TSharedRef<SWidget> UInventoryWidget::BuildTabButton(const FString& Label, ESCTDTurretPartType PartType)
 {
-	const bool bSelected = SelectedPartType == PartType;
 	return SNew(SButton)
-		.ButtonColorAndOpacity(bSelected ? FLinearColor(0.18f, 0.22f, 0.86f, 1.0f) : FLinearColor(0.022f, 0.024f, 0.030f, 1.0f))
+		.ButtonColorAndOpacity(TAttribute<FSlateColor>::Create(TAttribute<FSlateColor>::FGetter::CreateLambda(
+			[this, PartType]()
+			{
+				return FSlateColor(SelectedPartType == PartType
+					? FLinearColor(0.18f, 0.22f, 0.86f, 1.0f)
+					: FLinearColor(0.022f, 0.024f, 0.030f, 1.0f));
+			})))
 		.ContentPadding(FMargin(18.0f, 10.0f))
 		.OnClicked(FOnClicked::CreateUObject(this, &UInventoryWidget::HandleTabClicked, PartType))
 		[
@@ -383,6 +388,7 @@ TSharedRef<SWidget> UInventoryWidget::BuildGridCell(const TOptional<FSCTDOwnedTu
 TSharedRef<SWidget> UInventoryWidget::BuildItemCard(const FSCTDOwnedTurretPartRecord& PartRecord) const
 {
 	const FString UsedLabel = GetUsedPartLabel(PartRecord);
+	const FString Description = GetPartDescription(PartRecord);
 
 	TSharedRef<SVerticalBox> OptionsBox = SNew(SVerticalBox);
 	for (const FSCTDTurretPartOption& Option : PartRecord.AdditionalOptions)
@@ -420,6 +426,16 @@ TSharedRef<SWidget> UInventoryWidget::BuildItemCard(const FSCTDOwnedTurretPartRe
 						.Text(FText::FromString(FString::Printf(TEXT("%s / %s"), *GetPartTypeLabel(PartRecord.PartType), *GetMountTypeLabel(PartRecord.MountType))))
 						.ColorAndOpacity(FLinearColor(0.72f, 0.72f, 0.68f, 1.0f))
 						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 12.0f)
+					[
+						SNew(SSCTDMarqueeText)
+						.Text(FText::FromString(Description))
+						.ColorAndOpacity(FLinearColor(0.52f, 0.52f, 0.54f, 1.0f))
+						.Font(FCoreStyle::GetDefaultFontStyle("Regular", 10))
+						.Justification(ETextJustify::Center)
+						.TextLengthHandling(ESCTDTextLengthHandling::RenderOverflow)
+						.Visibility(Description.IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible)
 					]
 					+ SVerticalBox::Slot().AutoHeight()
 					[
@@ -503,10 +519,13 @@ TSharedRef<SWidget> UInventoryWidget::BuildBasicStatsWidget(const FSCTDOwnedTurr
 		const float BaseCriticalDamage = bHasBaseline ? Baseline.CriticalDamageMultiplier : PartRecord.CriticalDamageMultiplier;
 		const int32 BaseBuildCost = bHasBaseline ? Baseline.BuildCost : PartRecord.BuildCost;
 		const float BaseBuildTime = bHasBaseline ? Baseline.BuildTimeSeconds : PartRecord.BuildTimeSeconds;
-		AddRow(TEXT("Damage"), FString::Printf(TEXT("%.0f-%.0f"), BaseMinDamage, BaseMaxDamage), FString::Printf(TEXT("%.0f-%.0f"), PartRecord.MinAttackDamage, PartRecord.MaxAttackDamage), bHasBaseline && (IsChanged(BaseMinDamage, PartRecord.MinAttackDamage) || IsChanged(BaseMaxDamage, PartRecord.MaxAttackDamage)));
+		AddRow(FString::Printf(TEXT("%s Damage"), *GetAttackAttributeLabel(PartRecord.AttackAttribute)), FString::Printf(TEXT("%.0f-%.0f"), BaseMinDamage, BaseMaxDamage), FString::Printf(TEXT("%.0f-%.0f"), PartRecord.MinAttackDamage, PartRecord.MaxAttackDamage), bHasBaseline && (IsChanged(BaseMinDamage, PartRecord.MinAttackDamage) || IsChanged(BaseMaxDamage, PartRecord.MaxAttackDamage)));
 		AddRow(TEXT("Speed"), FString::Printf(TEXT("%.2f / sec"), BaseAttackSpeed), FString::Printf(TEXT("%.2f / sec"), PartRecord.AttackSpeed), bHasBaseline && IsChanged(BaseAttackSpeed, PartRecord.AttackSpeed));
 		AddRow(TEXT("Range"), FString::Printf(TEXT("%.0f"), BaseAttackRange), FString::Printf(TEXT("%.0f"), PartRecord.AttackRange), bHasBaseline && IsChanged(BaseAttackRange, PartRecord.AttackRange));
-		AddRow(TEXT("Area"), FString::Printf(TEXT("%.0f"), BaseAreaRange), FString::Printf(TEXT("%.0f"), PartRecord.AreaAttackRange), bHasBaseline && IsChanged(BaseAreaRange, PartRecord.AreaAttackRange));
+		if (PartRecord.bCanAreaAttack)
+		{
+			AddRow(TEXT("Area"), FString::Printf(TEXT("%.0f"), BaseAreaRange), FString::Printf(TEXT("%.0f"), PartRecord.AreaAttackRange), bHasBaseline && IsChanged(BaseAreaRange, PartRecord.AreaAttackRange));
+		}
 		AddRow(TEXT("Crit"), FString::Printf(TEXT("%.0f%% / x%.2f"), BaseCriticalChance * 100.0f, BaseCriticalDamage), FString::Printf(TEXT("%.0f%% / x%.2f"), PartRecord.CriticalChance * 100.0f, PartRecord.CriticalDamageMultiplier), bHasBaseline && (IsChanged(BaseCriticalChance, PartRecord.CriticalChance) || IsChanged(BaseCriticalDamage, PartRecord.CriticalDamageMultiplier)));
 		AddRow(TEXT("Build Cost"), FString::Printf(TEXT("%d"), BaseBuildCost), FString::Printf(TEXT("%d"), PartRecord.BuildCost), bHasBaseline && IsChanged(BaseBuildCost, PartRecord.BuildCost));
 		AddRow(TEXT("Build Time"), FString::Printf(TEXT("%.1fs"), BaseBuildTime), FString::Printf(TEXT("%.1fs"), PartRecord.BuildTimeSeconds), bHasBaseline && IsChanged(BaseBuildTime, PartRecord.BuildTimeSeconds));
@@ -977,6 +996,23 @@ FString UInventoryWidget::GetMountTypeLabel(ESCTDTurretMountType MountType) cons
 	}
 }
 
+FString UInventoryWidget::GetAttackAttributeLabel(ESCTDAttackAttribute AttackAttribute) const
+{
+	switch (AttackAttribute)
+	{
+	case ESCTDAttackAttribute::Physical:
+		return TEXT("Physical");
+	case ESCTDAttackAttribute::Fire:
+		return TEXT("Fire");
+	case ESCTDAttackAttribute::Lightning:
+		return TEXT("Lightning");
+	case ESCTDAttackAttribute::Frost:
+		return TEXT("Frost");
+	default:
+		return TEXT("-");
+	}
+}
+
 FName UInventoryWidget::GetMountTypeFilterId(ESCTDTurretMountType MountType) const
 {
 	switch (MountType)
@@ -1017,6 +1053,64 @@ FString UInventoryWidget::GetTargetingAILabel(ESCTDTargetingAI TargetingAI) cons
 	case ESCTDTargetingAI::Revenge: return TEXT("REVENGE");
 	default: return TEXT("-");
 	}
+}
+
+FString UInventoryWidget::GetPartDescription(const FSCTDOwnedTurretPartRecord& PartRecord) const
+{
+	if (!PartRecord.Description.IsEmpty())
+	{
+		return PartRecord.Description;
+	}
+
+	if (PartRecord.DefinitionId == TEXT("part_body_pylon"))
+	{
+		return TEXT("저가형 파일런은 타워형 무기를 탑재할 수 있다.");
+	}
+	if (PartRecord.DefinitionId == TEXT("part_body_quirass"))
+	{
+		return TEXT("저가형 갑옷으로 양팔형 무기를 탑재할 수 있다.");
+	}
+	if (PartRecord.DefinitionId == TEXT("part_body_gunstock"))
+	{
+		return TEXT("저가형 개머리판으로 캐논형 무기를 탑재할 수 있다.");
+	}
+	if (PartRecord.DefinitionId == TEXT("part_weapon_mortar"))
+	{
+		return TEXT("느리지만 장거리 광역 공격이 가능한 박격포이다.");
+	}
+	if (PartRecord.DefinitionId == TEXT("part_weapon_minigun"))
+	{
+		return TEXT("중거리 대응 사격에 탁월한 미니건이다.");
+	}
+	if (PartRecord.DefinitionId == TEXT("part_weapon_axe"))
+	{
+		return TEXT("강력한 근거리 공격으로 무엇도 놓치지 않는 도끼이다.");
+	}
+	if (PartRecord.DefinitionId == TEXT("part_control_closer"))
+	{
+		return TEXT("가장 가까운 몬스터를 공격하는 AI");
+	}
+	if (PartRecord.DefinitionId == TEXT("part_control_sniper"))
+	{
+		return TEXT("가장 먼 몬스터를 공격하는 AI");
+	}
+	if (PartRecord.DefinitionId == TEXT("part_control_greedy"))
+	{
+		return TEXT("가장 체력이 적은 몬스터를 공격하는 AI");
+	}
+	if (PartRecord.DefinitionId == TEXT("part_control_potato"))
+	{
+		return TEXT("가장 체력이 많은 몬스터를 공격하는 AI");
+	}
+	if (PartRecord.DefinitionId == TEXT("part_control_chaser"))
+	{
+		return TEXT("가장 빠른 몬스터를 공격하는 AI");
+	}
+	if (PartRecord.DefinitionId == TEXT("part_control_revenge"))
+	{
+		return TEXT("가장 공격력이 강한 몬스터를 공격하는 AI");
+	}
+	return TEXT("");
 }
 
 FString UInventoryWidget::GetItemFilterLabel(FName DefinitionId) const

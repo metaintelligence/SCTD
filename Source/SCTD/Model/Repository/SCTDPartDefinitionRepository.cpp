@@ -525,6 +525,7 @@ void USCTDPartDefinitionRepository::ApplyDefinitionToOwnedPart(const FSCTDTurret
 	PartRecord.DefinitionId = Definition.DefinitionId;
 	PartRecord.PartType = Definition.PartType;
 	PartRecord.DisplayName = Definition.DisplayName.ToString();
+	PartRecord.Description = Definition.Description.ToString();
 	PartRecord.BuildCost = Definition.BuildCost;
 	PartRecord.BuildTimeSeconds = Definition.BuildTimeSeconds;
 	PartRecord.MountType = Definition.MountType;

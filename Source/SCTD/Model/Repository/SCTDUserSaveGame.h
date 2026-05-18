@@ -30,7 +30,7 @@ class SCTD_API USCTDUserSaveGame : public USaveGame
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Repository|User")
-	int32 SaveVersion = 6;
+	int32 SaveVersion = 7;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Decks")
 	int32 SelectedTurretDeckIndex = 0;

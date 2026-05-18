@@ -215,6 +215,9 @@ struct FSCTDOwnedTurretPartRecord
 	FString DisplayName;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part")
+	FString Description;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part")
 	int32 BuildCost = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Repository|Part")

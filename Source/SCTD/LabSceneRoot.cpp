@@ -136,8 +136,13 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 			return IsSeedDamageCarrier(PartRecord) && HasNonPhysicalDamageBonus(PartRecord);
 		});
 	const bool bShouldRerollMissingElementalSeedDamage = bHasSeedDamageCarrier && !bHasNonPhysicalSeedDamageBonus;
-	constexpr int32 CurrentMockSeedVersion = 6;
-	const bool bShouldRerollSeedParts = SaveGame->SaveVersion < CurrentMockSeedVersion || bShouldRerollMissingElementalSeedDamage;
+	const bool bHasSeedPartMissingDescription = SaveGame->OwnedParts.ContainsByPredicate(
+		[IsSeedPartDefinition](const FSCTDOwnedTurretPartRecord& PartRecord)
+		{
+			return IsSeedPartDefinition(PartRecord) && PartRecord.Description.IsEmpty();
+		});
+	constexpr int32 CurrentMockSeedVersion = 7;
+	const bool bShouldRerollSeedParts = SaveGame->SaveVersion < CurrentMockSeedVersion || bShouldRerollMissingElementalSeedDamage || bHasSeedPartMissingDescription;
 
 	const FLinearColor LegendaryColor(0.84f, 0.62f, 1.0f, 1.0f);
 	auto AddLegendaryOption = [](FSCTDOwnedTurretPartRecord& PartRecord, FName OptionId, const FText& DisplayName, float Value)
@@ -272,12 +277,13 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 		return PartRecord;
 	};
 
-	auto MakeBasePart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, ESCTDTurretMountType MountType, float Health, float Defense, float SelfRepair, int32 BuildCost, float BuildTime)
+	auto MakeBasePart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, const TCHAR* Description, ESCTDTurretMountType MountType, float Health, float Defense, float SelfRepair, int32 BuildCost, float BuildTime)
 	{
 		FSCTDOwnedTurretPartRecord PartRecord;
 		PartRecord.DefinitionId = DefinitionId;
 		PartRecord.PartType = ESCTDTurretPartType::Base;
 		PartRecord.DisplayName = DisplayName;
+		PartRecord.Description = Description;
 		PartRecord.MountType = MountType;
 		PartRecord.BaseHealth = Health;
 		PartRecord.Defense = Defense;
@@ -288,12 +294,13 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 		return PartRecord;
 	};
 
-	auto MakeWeaponPart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, ESCTDTurretMountType MountType, float MinDamage, float MaxDamage, float AttackSpeed, float AttackRange, float AreaRange, bool bCanAreaAttack, float CriticalChance, float CriticalDamageBonus, float StatusChance, int32 BuildCost, float BuildTime)
+	auto MakeWeaponPart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, const TCHAR* Description, ESCTDTurretMountType MountType, float MinDamage, float MaxDamage, float AttackSpeed, float AttackRange, float AreaRange, bool bCanAreaAttack, float CriticalChance, float CriticalDamageBonus, float StatusChance, int32 BuildCost, float BuildTime)
 	{
 		FSCTDOwnedTurretPartRecord PartRecord;
 		PartRecord.DefinitionId = DefinitionId;
 		PartRecord.PartType = ESCTDTurretPartType::Weapon;
 		PartRecord.DisplayName = DisplayName;
+		PartRecord.Description = Description;
 		PartRecord.MountType = MountType;
 		PartRecord.MinAttackDamage = MinDamage;
 		PartRecord.MaxAttackDamage = MaxDamage;
@@ -311,12 +318,13 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 		return PartRecord;
 	};
 
-	auto MakeControlPart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, ESCTDTargetingAI TargetingAI)
+	auto MakeControlPart = [](const TCHAR* DefinitionId, const TCHAR* DisplayName, const TCHAR* Description, ESCTDTargetingAI TargetingAI)
 	{
 		FSCTDOwnedTurretPartRecord PartRecord;
 		PartRecord.DefinitionId = DefinitionId;
 		PartRecord.PartType = ESCTDTurretPartType::Control;
 		PartRecord.DisplayName = DisplayName;
+		PartRecord.Description = Description;
 		PartRecord.TargetingAI = TargetingAI;
 		PartRecord.AIProfileId = DisplayName;
 		PartRecord.CriticalDamageMultiplier = 1.5f;
@@ -324,20 +332,20 @@ void ALabSceneRoot::SeedMockPartsIfNeeded()
 	};
 
 	TArray<FSCTDOwnedTurretPartRecord> SeedParts;
-	SeedParts.Add(BuildLegendaryPart(MakeBasePart(TEXT("part_body_pylon"), TEXT("PYLON"), ESCTDTurretMountType::Tower, 400.0f, 10.0f, 1.0f, 100, 5.0f)));
-	SeedParts.Add(BuildLegendaryPart(MakeBasePart(TEXT("part_body_quirass"), TEXT("QUIRASS"), ESCTDTurretMountType::Arm, 600.0f, 20.0f, 2.0f, 100, 2.0f)));
-	SeedParts.Add(BuildLegendaryPart(MakeBasePart(TEXT("part_body_gunstock"), TEXT("GUNSTOCK"), ESCTDTurretMountType::Cannon, 200.0f, 10.0f, 1.0f, 100, 3.0f)));
+	SeedParts.Add(BuildLegendaryPart(MakeBasePart(TEXT("part_body_pylon"), TEXT("PYLON"), TEXT("저가형 파일런은 타워형 무기를 탑재할 수 있다."), ESCTDTurretMountType::Tower, 400.0f, 10.0f, 1.0f, 100, 5.0f)));
+	SeedParts.Add(BuildLegendaryPart(MakeBasePart(TEXT("part_body_quirass"), TEXT("QUIRASS"), TEXT("저가형 갑옷으로 양팔형 무기를 탑재할 수 있다."), ESCTDTurretMountType::Arm, 600.0f, 20.0f, 2.0f, 100, 2.0f)));
+	SeedParts.Add(BuildLegendaryPart(MakeBasePart(TEXT("part_body_gunstock"), TEXT("GUNSTOCK"), TEXT("저가형 개머리판으로 캐논형 무기를 탑재할 수 있다."), ESCTDTurretMountType::Cannon, 200.0f, 10.0f, 1.0f, 100, 3.0f)));
 
-	SeedParts.Add(BuildLegendaryPart(MakeWeaponPart(TEXT("part_weapon_mortar"), TEXT("MORTAR"), ESCTDTurretMountType::Tower, 10.0f, 20.0f, 0.33f, 5.0f, 1.0f, false, 0.10f, 0.50f, 0.30f, 100, 5.0f)));
-	SeedParts.Add(BuildLegendaryPart(MakeWeaponPart(TEXT("part_weapon_minigun"), TEXT("MINIGUN"), ESCTDTurretMountType::Cannon, 4.0f, 6.0f, 3.0f, 3.0f, 0.0f, false, 0.20f, 0.50f, 0.10f, 100, 3.0f)));
-	SeedParts.Add(BuildLegendaryPart(MakeWeaponPart(TEXT("part_weapon_axe"), TEXT("AXE"), ESCTDTurretMountType::Arm, 9.0f, 11.0f, 1.0f, 1.0f, 0.0f, false, 0.20f, 0.50f, 0.20f, 100, 2.0f)));
+	SeedParts.Add(BuildLegendaryPart(MakeWeaponPart(TEXT("part_weapon_mortar"), TEXT("MORTAR"), TEXT("느리지만 장거리 광역 공격이 가능한 박격포이다."), ESCTDTurretMountType::Tower, 10.0f, 20.0f, 0.33f, 5.0f, 1.0f, true, 0.10f, 0.50f, 0.30f, 100, 5.0f)));
+	SeedParts.Add(BuildLegendaryPart(MakeWeaponPart(TEXT("part_weapon_minigun"), TEXT("MINIGUN"), TEXT("중거리 대응 사격에 탁월한 미니건이다."), ESCTDTurretMountType::Cannon, 4.0f, 6.0f, 3.0f, 3.0f, 0.0f, false, 0.20f, 0.50f, 0.10f, 100, 3.0f)));
+	SeedParts.Add(BuildLegendaryPart(MakeWeaponPart(TEXT("part_weapon_axe"), TEXT("AXE"), TEXT("강력한 근거리 공격으로 무엇도 놓치지 않는 도끼이다."), ESCTDTurretMountType::Arm, 9.0f, 11.0f, 1.0f, 1.0f, 0.0f, false, 0.20f, 0.50f, 0.20f, 100, 2.0f)));
 
-	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_closer"), TEXT("CLOSER"), ESCTDTargetingAI::Closer)));
-	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_sniper"), TEXT("SNIPER"), ESCTDTargetingAI::Sniper)));
-	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_greedy"), TEXT("GREEDY"), ESCTDTargetingAI::Greedy)));
-	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_potato"), TEXT("POTATO"), ESCTDTargetingAI::Potato)));
-	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_chaser"), TEXT("CHASER"), ESCTDTargetingAI::Chaser)));
-	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_revenge"), TEXT("REVENGE"), ESCTDTargetingAI::Revenge)));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_closer"), TEXT("CLOSER"), TEXT("가장 가까운 몬스터를 공격하는 AI"), ESCTDTargetingAI::Closer)));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_sniper"), TEXT("SNIPER"), TEXT("가장 먼 몬스터를 공격하는 AI"), ESCTDTargetingAI::Sniper)));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_greedy"), TEXT("GREEDY"), TEXT("가장 체력이 적은 몬스터를 공격하는 AI"), ESCTDTargetingAI::Greedy)));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_potato"), TEXT("POTATO"), TEXT("가장 체력이 많은 몬스터를 공격하는 AI"), ESCTDTargetingAI::Potato)));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_chaser"), TEXT("CHASER"), TEXT("가장 빠른 몬스터를 공격하는 AI"), ESCTDTargetingAI::Chaser)));
+	SeedParts.Add(BuildLegendaryPart(MakeControlPart(TEXT("part_control_revenge"), TEXT("REVENGE"), TEXT("가장 공격력이 강한 몬스터를 공격하는 AI"), ESCTDTargetingAI::Revenge)));
 
 	if (PartsRepository->GetOwnedPartCount() > 0 && !bShouldRerollSeedParts)
 	{

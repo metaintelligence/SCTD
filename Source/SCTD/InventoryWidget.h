@@ -78,9 +78,11 @@ private:
 	bool DoesPartPassFilters(const FSCTDOwnedTurretPartRecord& PartRecord) const;
 	FString GetPartTypeLabel(ESCTDTurretPartType PartType) const;
 	FString GetMountTypeLabel(ESCTDTurretMountType MountType) const;
+	FString GetAttackAttributeLabel(ESCTDAttackAttribute AttackAttribute) const;
 	FName GetMountTypeFilterId(ESCTDTurretMountType MountType) const;
 	ESCTDTurretMountType GetMountTypeFromFilterId(FName MountTypeFilterId) const;
 	FString GetTargetingAILabel(ESCTDTargetingAI TargetingAI) const;
+	FString GetPartDescription(const FSCTDOwnedTurretPartRecord& PartRecord) const;
 	FString GetItemFilterLabel(FName DefinitionId) const;
 	FString GetOptionLabel(FName OptionId) const;
 	FString BuildOptionValueText(const FSCTDTurretPartOption& Option) const;
