@@ -1,0 +1,667 @@
+{
+  "side_labels": {
+    "S0": "top horizontal edge center",
+    "S1": "upper-right slanted edge center",
+    "S2": "lower-right slanted edge center",
+    "S3": "bottom horizontal edge center",
+    "S4": "lower-left slanted edge center",
+    "S5": "upper-left slanted edge center"
+  },
+  "rules": [
+    "Road and river endpoints must be side-center ports only.",
+    "No endpoint may touch or include a hex vertex.",
+    "The full road/river width must leave visible dry-ground clearance from adjacent vertices.",
+    "Use mask files as topology locks; use guide files for human-readable review.",
+    "Final 3D models should snap port centers to exact mesh-side midpoint coordinates."
+  ],
+  "templates": [
+    {
+      "asset": "Road",
+      "kind": "through",
+      "ports": [
+        "S0",
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadThrough_S0_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadThrough_S0_S3.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "through",
+      "ports": [
+        "S1",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadThrough_S1_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadThrough_S1_S4.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "through",
+      "ports": [
+        "S2",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadThrough_S2_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadThrough_S2_S5.png"
+    },
+    {
+      "asset": "River",
+      "kind": "through",
+      "ports": [
+        "S0",
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverThrough_S0_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverThrough_S0_S3.png"
+    },
+    {
+      "asset": "River",
+      "kind": "through",
+      "ports": [
+        "S1",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverThrough_S1_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverThrough_S1_S4.png"
+    },
+    {
+      "asset": "River",
+      "kind": "through",
+      "ports": [
+        "S2",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverThrough_S2_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverThrough_S2_S5.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "end",
+      "ports": [
+        "S0"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadEnd_S0.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadEnd_S0.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "end",
+      "ports": [
+        "S1"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadEnd_S1.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadEnd_S1.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "end",
+      "ports": [
+        "S2"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadEnd_S2.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadEnd_S2.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "end",
+      "ports": [
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadEnd_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadEnd_S3.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "end",
+      "ports": [
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadEnd_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadEnd_S4.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "end",
+      "ports": [
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadEnd_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadEnd_S5.png"
+    },
+    {
+      "asset": "River",
+      "kind": "end",
+      "ports": [
+        "S0"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverEnd_S0.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverEnd_S0.png"
+    },
+    {
+      "asset": "River",
+      "kind": "end",
+      "ports": [
+        "S1"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverEnd_S1.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverEnd_S1.png"
+    },
+    {
+      "asset": "River",
+      "kind": "end",
+      "ports": [
+        "S2"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverEnd_S2.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverEnd_S2.png"
+    },
+    {
+      "asset": "River",
+      "kind": "end",
+      "ports": [
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverEnd_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverEnd_S3.png"
+    },
+    {
+      "asset": "River",
+      "kind": "end",
+      "ports": [
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverEnd_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverEnd_S4.png"
+    },
+    {
+      "asset": "River",
+      "kind": "end",
+      "ports": [
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverEnd_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverEnd_S5.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S0",
+        "S1"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S0_S1.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S0_S1.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S0",
+        "S2"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S0_S2.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S0_S2.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S0",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S0_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S0_S4.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S0",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S0_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S0_S5.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S1",
+        "S2"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S1_S2.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S1_S2.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S1",
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S1_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S1_S3.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S1",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S1_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S1_S5.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S2",
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S2_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S2_S3.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S2",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S2_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S2_S4.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S3",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S3_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S3_S4.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S3",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S3_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S3_S5.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S4",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnA_S4_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnA_S4_S5.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S0",
+        "S1"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S0_S1.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S0_S1.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S0",
+        "S2"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S0_S2.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S0_S2.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S0",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S0_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S0_S4.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S0",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S0_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S0_S5.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S1",
+        "S2"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S1_S2.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S1_S2.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S1",
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S1_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S1_S3.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S1",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S1_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S1_S5.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S2",
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S2_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S2_S3.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S2",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S2_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S2_S4.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S3",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S3_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S3_S4.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S3",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S3_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S3_S5.png"
+    },
+    {
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S4",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RoadTurnB_S4_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RoadTurnB_S4_S5.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S0",
+        "S1"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S0_S1.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S0_S1.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S0",
+        "S2"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S0_S2.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S0_S2.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S0",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S0_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S0_S4.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S0",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S0_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S0_S5.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S1",
+        "S2"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S1_S2.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S1_S2.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S1",
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S1_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S1_S3.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S1",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S1_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S1_S5.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S2",
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S2_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S2_S3.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S2",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S2_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S2_S4.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S3",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S3_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S3_S4.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S3",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S3_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S3_S5.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S4",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnA_S4_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnA_S4_S5.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S0",
+        "S1"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S0_S1.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S0_S1.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S0",
+        "S2"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S0_S2.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S0_S2.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S0",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S0_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S0_S4.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S0",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S0_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S0_S5.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S1",
+        "S2"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S1_S2.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S1_S2.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S1",
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S1_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S1_S3.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S1",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S1_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S1_S5.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S2",
+        "S3"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S2_S3.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S2_S3.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S2",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S2_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S2_S4.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S3",
+        "S4"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S3_S4.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S3_S4.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S3",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S3_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S3_S5.png"
+    },
+    {
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S4",
+        "S5"
+      ],
+      "guide": "Content/Images/Terrain/Templates/Guides/HEX_TOPOLOGY_RiverTurnB_S4_S5.png",
+      "mask": "Content/Images/Terrain/Templates/Masks/HEX_MASK_RiverTurnB_S4_S5.png"
+    }
+  ]
+}

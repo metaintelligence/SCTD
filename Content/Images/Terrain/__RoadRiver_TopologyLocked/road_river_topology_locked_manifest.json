@@ -1,0 +1,238 @@
+{
+  "tiles": [
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RoadThrough_01_S0_S3_CrackedAsphalt.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RoadThrough_01_S0_S3_CrackedAsphalt_TopologyMask.png",
+      "asset": "Road",
+      "kind": "through",
+      "ports": [
+        "S0",
+        "S3"
+      ],
+      "variant": 1,
+      "description": "straight north-south cracked asphalt"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RoadThrough_02_S1_S4_DustyDiagonal.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RoadThrough_02_S1_S4_DustyDiagonal_TopologyMask.png",
+      "asset": "Road",
+      "kind": "through",
+      "ports": [
+        "S1",
+        "S4"
+      ],
+      "variant": 2,
+      "description": "upper-right to lower-left dusty asphalt"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RoadThrough_03_S2_S5_BrokenServiceRoad.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RoadThrough_03_S2_S5_BrokenServiceRoad_TopologyMask.png",
+      "asset": "Road",
+      "kind": "through",
+      "ports": [
+        "S2",
+        "S5"
+      ],
+      "variant": 3,
+      "description": "lower-right to upper-left broken service road"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RiverThrough_01_S0_S3_StraightChannel.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RiverThrough_01_S0_S3_StraightChannel_TopologyMask.png",
+      "asset": "River",
+      "kind": "through",
+      "ports": [
+        "S0",
+        "S3"
+      ],
+      "variant": 1,
+      "description": "straight vertical river channel"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RiverThrough_02_S1_S4_RubbleBank.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RiverThrough_02_S1_S4_RubbleBank_TopologyMask.png",
+      "asset": "River",
+      "kind": "through",
+      "ports": [
+        "S1",
+        "S4"
+      ],
+      "variant": 2,
+      "description": "diagonal river with rubble banks"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RiverThrough_03_S2_S5_FloodCut.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RiverThrough_03_S2_S5_FloodCut_TopologyMask.png",
+      "asset": "River",
+      "kind": "through",
+      "ports": [
+        "S2",
+        "S5"
+      ],
+      "variant": 3,
+      "description": "opposite diagonal flood cut"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RoadEnd_01_S0_Barricade.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RoadEnd_01_S0_Barricade_TopologyMask.png",
+      "asset": "Road",
+      "kind": "end",
+      "ports": [
+        "S0"
+      ],
+      "variant": 1,
+      "description": "road stops at interior barricade"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RoadEnd_02_S2_RubbleCollapse.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RoadEnd_02_S2_RubbleCollapse_TopologyMask.png",
+      "asset": "Road",
+      "kind": "end",
+      "ports": [
+        "S2"
+      ],
+      "variant": 2,
+      "description": "road blocked by rubble collapse"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RoadEnd_03_S4_SandFilled.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RoadEnd_03_S4_SandFilled_TopologyMask.png",
+      "asset": "Road",
+      "kind": "end",
+      "ports": [
+        "S4"
+      ],
+      "variant": 3,
+      "description": "sand-filled road end"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RiverEnd_01_S1_DryBasin.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RiverEnd_01_S1_DryBasin_TopologyMask.png",
+      "asset": "River",
+      "kind": "end",
+      "ports": [
+        "S1"
+      ],
+      "variant": 1,
+      "description": "river fades into dry basin"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RiverEnd_02_S3_RockPool.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RiverEnd_02_S3_RockPool_TopologyMask.png",
+      "asset": "River",
+      "kind": "end",
+      "ports": [
+        "S3"
+      ],
+      "variant": 2,
+      "description": "river ends in rock pool"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RiverEnd_03_S5_SiltedDrain.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RiverEnd_03_S5_SiltedDrain_TopologyMask.png",
+      "asset": "River",
+      "kind": "end",
+      "ports": [
+        "S5"
+      ],
+      "variant": 3,
+      "description": "silted drainage end"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RoadTurnA_01_S0_S2_Elbow.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RoadTurnA_01_S0_S2_Elbow_TopologyMask.png",
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S0",
+        "S2"
+      ],
+      "variant": 1,
+      "description": "single-bend elbow road"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RoadTurnA_02_S3_S5_Elbow.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RoadTurnA_02_S3_S5_Elbow_TopologyMask.png",
+      "asset": "Road",
+      "kind": "turn_a",
+      "ports": [
+        "S3",
+        "S5"
+      ],
+      "variant": 2,
+      "description": "single-bend elbow road"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RiverTurnA_01_S0_S2_Elbow.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RiverTurnA_01_S0_S2_Elbow_TopologyMask.png",
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S0",
+        "S2"
+      ],
+      "variant": 1,
+      "description": "single-bend elbow river"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RiverTurnA_02_S4_S5_Elbow.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RiverTurnA_02_S4_S5_Elbow_TopologyMask.png",
+      "asset": "River",
+      "kind": "turn_a",
+      "ports": [
+        "S4",
+        "S5"
+      ],
+      "variant": 2,
+      "description": "single-bend elbow river"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RoadTurnB_01_S0_S2_Dogleg.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RoadTurnB_01_S0_S2_Dogleg_TopologyMask.png",
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S0",
+        "S2"
+      ],
+      "variant": 1,
+      "description": "dogleg road with extra internal bend"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RoadTurnB_02_S3_S5_Dogleg.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RoadTurnB_02_S3_S5_Dogleg_TopologyMask.png",
+      "asset": "Road",
+      "kind": "turn_b",
+      "ports": [
+        "S3",
+        "S5"
+      ],
+      "variant": 2,
+      "description": "dogleg road with extra internal bend"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RiverTurnB_01_S0_S2_Dogleg.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RiverTurnB_01_S0_S2_Dogleg_TopologyMask.png",
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S0",
+        "S2"
+      ],
+      "variant": 1,
+      "description": "dogleg river with extra internal bend"
+    },
+    {
+      "filename": "Content/Images/Terrain/RoadRiver_TopologyLocked/TILE_RiverTurnB_02_S4_S5_Dogleg.png",
+      "topology_mask": "Content/Images/Terrain/RoadRiver_TopologyLocked/TopologyMasks/TILE_RiverTurnB_02_S4_S5_Dogleg_TopologyMask.png",
+      "asset": "River",
+      "kind": "turn_b",
+      "ports": [
+        "S4",
+        "S5"
+      ],
+      "variant": 2,
+      "description": "dogleg river with extra internal bend"
+    }
+  ]
+}
